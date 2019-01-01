@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"flag"
 	"io"
 	"io/ioutil"
 	"log"
@@ -104,6 +105,101 @@ func TestDeflateRandom(t *testing.T) {
 	}
 }
 
+var (
+	testPathFlag = flag.String("path",
+		"/home/ysaito/CNVS-NORM-110033752-cfDNA-WGBS-Rep1_S1_L001_R1_001.fastq", "Plain-text file used for in tests and benchmarks")
+	testGZPathFlag = flag.String("gz-path",
+		"/scratch-nvme/cache_tmp/170206_ARTLoD_B1_01rerun_S1_L001_R1_001.fastq.gz",
+		"Gzipped file used in tests and benchmarks")
+	runManualTestsFlag = flag.Bool("run-manual-tests",
+		false, "Run large tests using files outside the repo")
+)
+
+func TestDeflateLarge(t *testing.T) {
+	if !*runManualTestsFlag {
+		t.Skip("--run-manual-tests not set")
+	}
+	testDeflateLarge(t, *testGZPathFlag)
+}
+
+func testDeflateLarge(t *testing.T, gzPath string) {
+	type reader struct {
+		in             *os.File
+		r              io.Reader
+		buf, remaining []byte
+	}
+	const bufSize = 1 << 20
+	var (
+		err    error
+		r0, r1 reader
+		r      = rand.New(rand.NewSource(0))
+	)
+	open := func(r *reader) {
+		r.in, err = os.Open(*testGZPathFlag)
+		assert.NoError(t, err)
+		r.buf = make([]byte, bufSize)
+	}
+	read := func(r *reader, want int) ([]byte, bool) {
+		buf := make([]byte, want)
+		remaining := buf
+		for {
+			n := len(remaining)
+			if n > len(r.remaining) {
+				n = len(r.remaining)
+			}
+			copy(remaining, r.remaining)
+			remaining = r.remaining[n:]
+			r.remaining = r.remaining[n:]
+			if len(remaining) == 0 {
+				break
+			}
+			got, err := r.r.Read(r.buf)
+			if got == 0 {
+				assert.EQ(t, err, io.EOF)
+				break
+			}
+			if err != nil {
+				assert.EQ(t, err, io.EOF)
+			}
+			r.buf = r.buf[got:]
+			r.remaining = r.buf
+		}
+		if len(remaining) == want {
+			return nil, false
+		}
+		return buf[0 : len(buf)-len(remaining)], true
+	}
+
+	open(&r0)
+	r0.r, err = gzip.NewReader(r0.in)
+	assert.NoError(t, err)
+	open(&r1)
+	r1.r, err = zlibng.NewReader(r1.in)
+	assert.NoError(t, err)
+
+	total := 0
+	last := 0
+	for {
+		nMax := r.Intn(bufSize)
+		buf0, ok0 := read(&r0, nMax)
+		buf1, ok1 := read(&r1, nMax)
+		if !bytes.Equal(buf0, buf1) {
+			t.Fatalf("want %d gotn0 %d gotn1 %d", nMax, len(buf0), len(buf1))
+		}
+		assert.EQ(t, ok0, ok1)
+		if !ok0 {
+			break
+		}
+		total += len(buf0)
+		if total-last > 1<<30 {
+			log.Printf("read %d bytes", total)
+			last = total
+		}
+	}
+	assert.NoError(t, r0.in.Close())
+	assert.NoError(t, r1.in.Close())
+}
+
 func benchmarkInflate(
 	b *testing.B,
 	path string,
@@ -184,10 +280,8 @@ func benchmarkDeflate(
 	b.Logf("Compressed size: %d", w.n)
 }
 
-var benchPath = "/home/ysaito/CNVS-NORM-110033752-cfDNA-WGBS-Rep1_S1_L001_R1_001.fastq"
-
 func BenchmarkDeflateStandardGzip(b *testing.B) {
-	benchmarkDeflate(b, benchPath,
+	benchmarkDeflate(b, *testPathFlag,
 		func(out io.Writer) io.WriteCloser {
 			w, err := gzip.NewWriterLevel(out, 5)
 			assert.NoError(b, err)
@@ -196,7 +290,7 @@ func BenchmarkDeflateStandardGzip(b *testing.B) {
 }
 
 func BenchmarkDeflateKlauspostGzip(b *testing.B) {
-	benchmarkDeflate(b, benchPath,
+	benchmarkDeflate(b, *testPathFlag,
 		func(out io.Writer) io.WriteCloser {
 			w, err := kgzip.NewWriterLevel(out, 5)
 			assert.NoError(b, err)
@@ -205,7 +299,7 @@ func BenchmarkDeflateKlauspostGzip(b *testing.B) {
 }
 
 func BenchmarkDeflateZlibNG(b *testing.B) {
-	benchmarkDeflate(b, benchPath,
+	benchmarkDeflate(b, *testPathFlag,
 		func(out io.Writer) io.WriteCloser {
 			w, err := zlibng.NewWriterLevel(out, 5, 512<<10)
 			assert.NoError(b, err)
