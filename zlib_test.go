@@ -155,7 +155,7 @@ func BenchmarkInflateKlauspostGzip(b *testing.B) {
 		})
 }
 
-func BenchmarkInflateCloudflareGzip(b *testing.B) {
+func BenchmarkInflateZlibNG(b *testing.B) {
 	benchmarkInflate(b, "/tmp/get-pip.py",
 		func(in io.Reader) (io.Reader, error) {
 			return zlibng.NewReaderBuffer(in, 512<<10)
@@ -210,7 +210,7 @@ func BenchmarkDeflateKlauspostGzip(b *testing.B) {
 		})
 }
 
-func BenchmarkDeflateCloudflareGzip(b *testing.B) {
+func BenchmarkDeflateZlibNG(b *testing.B) {
 	benchmarkDeflate(b, benchPath,
 		func(out io.Writer) io.WriteCloser {
 			w, err := zlibng.NewWriterLevel(out, 5, 512<<10)
