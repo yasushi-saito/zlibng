@@ -1,6 +1,6 @@
 
 Cgo wrapper for zlib-ng (https://github.com/zlib-ng/zlib-ng).
-
+It provides the same interface as "compress/gzip".
 
 Benchmark results:
 

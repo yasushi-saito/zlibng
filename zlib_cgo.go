@@ -4,7 +4,7 @@ package zlibng
 
 /*
 
-#cgo CFLAGS: -march=ivybridge -std=c99 -Wall -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN -DHAVE_INTERNAL -DHAVE_BUILTIN_CTZL -DMEDIUM_STRATEGY -DX86_64 -DX86_NOCHECK_SSE2 -DUNALIGNED_OK -DUNROLL_LESS -DX86_CPUID -DX86_SSE2_FILL_WINDOW -DX86_SSE4_2_CRC_HASH -DX86_SSE4_2_CRC_INTRIN -DX86_PCLMULQDQ_CRC -DX86_QUICK_STRATEGY -I/home/ysaito/go/src/github.com/ysaushi-saito/zlib-ng
+#cgo CFLAGS: -march=ivybridge -std=c99 -Wall -D_LARGEFILE64_SOURCE=1 -DHAVE_HIDDEN -DHAVE_INTERNAL -DHAVE_BUILTIN_CTZL -DMEDIUM_STRATEGY -DX86_64 -DX86_NOCHECK_SSE2 -DUNALIGNED_OK -DUNROLL_LESS -DX86_CPUID -DX86_SSE2_FILL_WINDOW -DX86_SSE4_2_CRC_HASH -DX86_SSE4_2_CRC_INTRIN -DX86_PCLMULQDQ_CRC -DX86_QUICK_STRATEGY -I.
 
 #include <errno.h>
 #include "./zlib-ng.h"
@@ -14,11 +14,10 @@ package zlibng
 import "C"
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"unsafe"
-
-	"errors"
 
 	"golang.org/x/sys/unix"
 )

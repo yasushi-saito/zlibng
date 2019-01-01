@@ -1,21 +1,16 @@
 package zlibng_test
 
 import (
+	"bufio"
+	"bytes"
+	"compress/gzip"
 	"io"
+	"io/ioutil"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"math/rand"
-
-	"compress/gzip"
-
-	"bytes"
-
-	"io/ioutil"
-
-	"bufio"
 
 	"github.com/grailbio/testutil/assert"
 	kgzip "github.com/klauspost/compress/gzip"
@@ -189,7 +184,6 @@ func benchmarkDeflate(
 	b.Logf("Compressed size: %d", w.n)
 }
 
-// var benchPath = "/tmp/get-pip.py"
 var benchPath = "/home/ysaito/CNVS-NORM-110033752-cfDNA-WGBS-Rep1_S1_L001_R1_001.fastq"
 
 func BenchmarkDeflateStandardGzip(b *testing.B) {
