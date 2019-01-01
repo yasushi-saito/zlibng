@@ -74,7 +74,7 @@ func (z *reader) Read(out []byte) (int, error) {
 			inConsumed C.int
 		)
 		if !z.inConsumed {
-			ret = C.zs_inflate(&z.zs[0], unsafe.Pointer(&out[0]), &outLen, &inConsumed)
+			ret = C.zs_inflate(&z.zs[0], nil, 0, unsafe.Pointer(&out[0]), &outLen, &inConsumed)
 		} else {
 			if z.inEOF {
 				z.err = io.EOF
@@ -96,7 +96,7 @@ func (z *reader) Read(out []byte) (int, error) {
 				z.err = io.EOF
 				break
 			}
-			ret = C.zs_inflate_with_input(&z.zs[0], unsafe.Pointer(&z.inBuf[0]), C.int(n), unsafe.Pointer(&out[0]), &outLen, &inConsumed)
+			ret = C.zs_inflate(&z.zs[0], unsafe.Pointer(&z.inBuf[0]), C.int(n), unsafe.Pointer(&out[0]), &outLen, &inConsumed)
 		}
 		z.inConsumed = (inConsumed != 0)
 		if ret != C.Z_STREAM_END && ret != C.Z_OK {
@@ -106,6 +106,10 @@ func (z *reader) Read(out []byte) (int, error) {
 		nOut := len(out) - int(outLen)
 		out = out[nOut:]
 		if ret == C.Z_STREAM_END {
+			ret = C.zs_inflate_reset(&z.zs[0])
+			if ret != C.Z_OK {
+				z.err = zlibReturnCodeToError(ret)
+			}
 			break
 		}
 	}
@@ -174,7 +178,7 @@ func (z *writer) Write(in []byte) (int, error) {
 		return 0, nil
 	}
 	var outLen = C.int(len(z.outBuf))
-	ret := C.zs_deflate_with_input(&z.zs[0], unsafe.Pointer(&in[0]), C.int(len(in)),
+	ret := C.zs_deflate(&z.zs[0], unsafe.Pointer(&in[0]), C.int(len(in)),
 		unsafe.Pointer(&z.outBuf[0]), &outLen)
 	if ret != 0 {
 		return 0, zlibReturnCodeToError(ret)
@@ -188,7 +192,7 @@ func (z *writer) Write(in []byte) (int, error) {
 	}
 	for {
 		outLen = C.int(len(z.outBuf))
-		ret = C.zs_deflate(&z.zs[0], unsafe.Pointer(&z.outBuf[0]), &outLen)
+		ret = C.zs_deflate(&z.zs[0], nil, 0, unsafe.Pointer(&z.outBuf[0]), &outLen)
 		if ret != 0 {
 			return 0, zlibReturnCodeToError(ret)
 		}

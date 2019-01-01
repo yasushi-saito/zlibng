@@ -27,13 +27,18 @@ func testInflate(t *testing.T, r *rand.Rand, src []byte, want []byte) {
 		buf = make([]byte, 8192)
 	)
 
+	noProgress := 0
+	iter := 0
 	for {
+		iter++
 		n := rand.Intn(8192)
 		n2, err := zin.Read(buf[:n])
 		if n2 > 0 {
 			got = append(got, buf[:n2]...)
-		} else if n > 0 {
-			assert.NotNil(t, err)
+			noProgress = 0
+		} else {
+			noProgress++
+			assert.LT(t, noProgress, 2, "iter=%d", iter)
 		}
 		if err == io.EOF {
 			break
@@ -49,7 +54,7 @@ func testInflate(t *testing.T, r *rand.Rand, src []byte, want []byte) {
 func TestInflateRandom(t *testing.T) {
 	r := rand.New(rand.NewSource(0))
 	for i := 0; i < 20; i++ {
-		n := r.Intn(16 << 20)
+		n := r.Intn(16 << 20) + 1
 		log.Printf("%d: n=%d", i, n)
 		uncompressed := make([]byte, n)
 		_, err := r.Read(uncompressed)
@@ -61,6 +66,30 @@ func TestInflateRandom(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, gz.Close())
 		testInflate(t, r, compressed.Bytes(), uncompressed)
+	}
+}
+
+// Test packed gzip
+func TestInflateRandomPacked(t *testing.T) {
+	r := rand.New(rand.NewSource(0))
+	for i := 0; i < 20; i++ {
+		compressed := bytes.Buffer{}
+		uncompressed := bytes.Buffer{}
+
+		log.Printf("%d", i)
+		for j := 0; j < 10; j++ {
+			n := r.Intn(2 << 20) + 1
+			buf := make([]byte, n)
+			_, err := r.Read(buf)
+			assert.NoError(t, err)
+			uncompressed.Write(buf)
+
+			gz := gzip.NewWriter(&compressed)
+			_, err = gz.Write(buf)
+			assert.NoError(t, err)
+			assert.NoError(t, gz.Close())
+		}
+		testInflate(t, r, compressed.Bytes(), uncompressed.Bytes())
 	}
 }
 
@@ -277,7 +306,6 @@ func benchmarkDeflate(
 		assert.NoError(b, deflator.Close())
 		assert.NoError(b, in.Close())
 	}
-	b.Logf("Compressed size: %d", w.n)
 }
 
 func BenchmarkDeflateStandardGzip(b *testing.B) {

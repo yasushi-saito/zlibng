@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+"""This script modifies the zlib-ng source directory for cgo.
+
+It supports only amd64 currently.
+
+"""
+
 import glob
 import os
 import logging
