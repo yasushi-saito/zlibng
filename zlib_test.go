@@ -16,6 +16,7 @@ import (
 	"github.com/grailbio/testutil/assert"
 	kgzip "github.com/klauspost/compress/gzip"
 	"github.com/yasushi-saito/zlibng"
+	"github.com/vitessio/vitess/go/cgzip"
 )
 
 func testInflate(t *testing.T, r *rand.Rand, src []byte, want []byte) {
@@ -135,6 +136,8 @@ func TestDeflateRandom(t *testing.T) {
 }
 
 var (
+	testSmallPathFlag = flag.String("small-path",
+		"/tmp/get-pip.py", "Plain-text file used for small tests")
 	testPathFlag = flag.String("path",
 		"/home/ysaito/CNVS-NORM-110033752-cfDNA-WGBS-Rep1_S1_L001_R1_001.fastq", "Plain-text file used for in tests and benchmarks")
 	testGZPathFlag = flag.String("gz-path",
@@ -262,23 +265,30 @@ func benchmarkInflate(
 }
 
 func BenchmarkInflateStandardGzip(b *testing.B) {
-	benchmarkInflate(b, "/tmp/get-pip.py",
+	benchmarkInflate(b, *testSmallPathFlag,
 		func(in io.Reader) (io.Reader, error) {
 			return gzip.NewReader(in)
 		})
 }
 
 func BenchmarkInflateKlauspostGzip(b *testing.B) {
-	benchmarkInflate(b, "/tmp/get-pip.py",
+	benchmarkInflate(b, *testSmallPathFlag,
 		func(in io.Reader) (io.Reader, error) {
 			return kgzip.NewReader(in)
 		})
 }
 
 func BenchmarkInflateZlibNG(b *testing.B) {
-	benchmarkInflate(b, "/tmp/get-pip.py",
+	benchmarkInflate(b, *testSmallPathFlag,
 		func(in io.Reader) (io.Reader, error) {
 			return zlibng.NewReaderBuffer(in, 512<<10)
+		})
+}
+
+func BenchmarkInflateCGZip(b *testing.B) {
+	benchmarkInflate(b, *testSmallPathFlag,
+		func(in io.Reader) (io.Reader, error) {
+			return cgzip.NewReaderBuffer(in, 512<<10)
 		})
 }
 
@@ -330,6 +340,15 @@ func BenchmarkDeflateZlibNG(b *testing.B) {
 	benchmarkDeflate(b, *testPathFlag,
 		func(out io.Writer) io.WriteCloser {
 			w, err := zlibng.NewWriterLevel(out, 5, 512<<10)
+			assert.NoError(b, err)
+			return w
+		})
+}
+
+func BenchmarkDeflateCGZip(b *testing.B) {
+	benchmarkDeflate(b, *testPathFlag,
+		func(out io.Writer) io.WriteCloser {
+			w, err := cgzip.NewWriterLevel(out, 5)
 			assert.NoError(b, err)
 			return w
 		})
