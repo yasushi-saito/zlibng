@@ -37,6 +37,8 @@ func testInflate(t *testing.T, r *rand.Rand, src []byte, want []byte) {
 		if n2 > 0 {
 			got = append(got, buf[:n2]...)
 			noProgress = 0
+		} else if err == io.EOF {
+			break
 		} else {
 			noProgress++
 			assert.LT(t, noProgress, 2, "iter=%d", iter)
@@ -50,6 +52,25 @@ func testInflate(t *testing.T, r *rand.Rand, src []byte, want []byte) {
 	if !bytes.Equal(got, want) {
 		t.Fatal("fail")
 	}
+}
+
+func TestInflateEmpty(t *testing.T) {
+	compressed := bytes.Buffer{}
+	gz := gzip.NewWriter(&compressed)
+	assert.NoError(t, gz.Close())
+	r := rand.New(rand.NewSource(0))
+	testInflate(t, r, compressed.Bytes(), nil)
+}
+
+func TestInflateSmall(t *testing.T) {
+	data := []byte("Blah")
+	compressed := bytes.Buffer{}
+	gz := gzip.NewWriter(&compressed)
+	_, err := gz.Write(data)
+	assert.NoError(t, err)
+	assert.NoError(t, gz.Close())
+	r := rand.New(rand.NewSource(0))
+	testInflate(t, r, compressed.Bytes(), data)
 }
 
 func TestInflateRandom(t *testing.T) {
