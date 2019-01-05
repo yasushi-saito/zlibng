@@ -5,9 +5,10 @@
 
 - Move files under arch/x86 to the toplevel directory, since cgo doesn't support subdirectories.
 
-- Add "zng_" prefix to non-static, hidden functions and variables. This is needed to allow mixing
-  libz and zlibng in a single binary. Otherwise if you import zlibng, and also use libz elsewhere, you'll get
-  symbol conflicts and worse random SEGVs.
+- Add "zng_" prefix to non-static, hidden functions and variables. This is
+  needed to allow mixing libz and zlibng in a single binary. Otherwise if you
+  import zlibng, and also use libz elsewhere, you'll get symbol conflicts and
+  worse random SEGVs.
 
   Ideally zlibng should be doing this already, but this problem is especially
   serious in this package since zlibng files are statically linked.
@@ -23,6 +24,7 @@ import os
 import logging
 
 def patch_file(src_path: str, dst_path: str):
+    """Copy a file from src_path to dst_path while rewriting its contents."""
     patterns = [
         ('arch/x86/', 'arch-x86-'),
         ('crc_folding.h', 'arch-x86-crc_folding.h'),
@@ -61,32 +63,25 @@ def patch_file(src_path: str, dst_path: str):
                 line = line.replace(from_str, to_str)
             out_fd.write(line)
 
-def copy_file(src_path: str, dst_path=""):
-    if dst_path == "":
-        dst_path = os.path.basename(src_path)
-    shutil.copyfile(src_path, dst_path)
-
 def main() -> None:
+    """Main entry point."""
     logging.basicConfig(level=logging.DEBUG)
 
-    p = argparse.ArgumentParser()
-    p.add_argument("src_dir", default=os.environ["HOME"] + "/github/zlib-ng")
-    args = p.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("src_dir", type=str, help='Directory that stores zlib-ng source files')
+    args = parser.parse_args()
 
     shutil.copyfile(args.src_dir + "/LICENSE.md", "LICENSE.md")
     shutil.copyfile(args.src_dir + "/README.md", "README-zlibng.md")
 
-    for src_path in glob.glob(f'{args.src_dir}/arch/x86/*.c') + glob.glob(f'{args.src_dir}/arch/x86/*.h'):
+    for src_path in (glob.glob(f'{args.src_dir}/arch/x86/*.c') +
+                     glob.glob(f'{args.src_dir}/arch/x86/*.h')):
         dst_path = "arch-x86-" + os.path.basename(src_path)
         patch_file(src_path, dst_path)
 
     for src_path in glob.glob(f'{args.src_dir}/*.h') + glob.glob(f'{args.src_dir}/*.c'):
-        skip = False
-        for ignore in ['gzclose', 'gzlib', 'gzread', 'gzwrite', 'gzguts']:
-            if ignore in src_path:
-                skip = True
-                break
-        if skip:
+        if os.path.basename(src_path) in ['gzclose.c', 'gzlib.c',
+                                          'gzread.c', 'gzwrite.c', 'gzguts.h']:
             continue
         patch_file(src_path, os.path.basename(src_path))
 
