@@ -148,12 +148,12 @@ uint32_t adler32_c(uint32_t adler, const unsigned char *buf, size_t len) {
 }
 
 uint32_t ZEXPORT PREFIX(adler32_z)(uint32_t adler, const unsigned char *buf, size_t len) {
-    return functable.adler32(adler, buf, len);
+    return zng_functable.adler32(adler, buf, len);
 }
 
 /* ========================================================================= */
 uint32_t ZEXPORT PREFIX(adler32)(uint32_t adler, const unsigned char *buf, uint32_t len) {
-    return functable.adler32(adler, buf, len);
+    return zng_functable.adler32(adler, buf, len);
 }
 
 /* ========================================================================= */

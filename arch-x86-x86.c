@@ -44,7 +44,7 @@ static void cpuid(int info, unsigned* eax, unsigned* ebx, unsigned* ecx, unsigne
 #endif
 }
 
-void ZLIB_INTERNAL x86_check_features(void) {
+void ZLIB_INTERNAL zng_x86_check_features(void) {
 	unsigned eax, ebx, ecx, edx;
 	unsigned maxbasic;
 

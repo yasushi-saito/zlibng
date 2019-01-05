@@ -36,7 +36,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
          * string following the next match.
          */
         if (s->lookahead < MIN_LOOKAHEAD) {
-            functable.fill_window(s);
+            zng_functable.fill_window(s);
             if (s->lookahead < MIN_LOOKAHEAD && flush == Z_NO_FLUSH) {
                 return need_more;
             }
@@ -49,7 +49,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
          */
         hash_head = NIL;
         if (s->lookahead >= MIN_MATCH) {
-            hash_head = functable.insert_string(s, s->strstart, 1);
+            hash_head = zng_functable.insert_string(s, s->strstart, 1);
         }
 
         /* Find the longest match, discarding those <= prev_length.
@@ -86,7 +86,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
 
             check_match(s, s->strstart-1, s->prev_match, s->prev_length);
 
-            _tr_tally_dist(s, s->strstart -1 - s->prev_match, s->prev_length - MIN_MATCH, bflush);
+            _zng_tr_tally_dist(s, s->strstart -1 - s->prev_match, s->prev_length - MIN_MATCH, bflush);
 
             /* Insert in hash table all strings up to the end of the match.
              * strstart-1 and strstart are already inserted. If there is not
@@ -99,7 +99,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
             s->prev_length -= 2;
             do {
                 if (++s->strstart <= max_insert) {
-                    functable.insert_string(s, s->strstart, 1);
+                    zng_functable.insert_string(s, s->strstart, 1);
                 }
             } while (--s->prev_length != 0);
             s->match_available = 0;
@@ -113,7 +113,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
                     if (unlikely(insert_cnt > max_insert - s->strstart))
                         insert_cnt = max_insert - s->strstart;
 
-                    functable.insert_string(s, s->strstart + 1, insert_cnt);
+                    zng_functable.insert_string(s, s->strstart + 1, insert_cnt);
                 }
                 s->prev_length = 0;
                 s->match_available = 0;
@@ -130,7 +130,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
              * is longer, truncate the previous match to a single literal.
              */
             Tracevv((stderr, "%c", s->window[s->strstart-1]));
-            _tr_tally_lit(s, s->window[s->strstart-1], bflush);
+            _zng_tr_tally_lit(s, s->window[s->strstart-1], bflush);
             if (bflush) {
                 FLUSH_BLOCK_ONLY(s, 0);
             }
@@ -150,7 +150,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
     Assert(flush != Z_NO_FLUSH, "no flush?");
     if (s->match_available) {
         Tracevv((stderr, "%c", s->window[s->strstart-1]));
-        _tr_tally_lit(s, s->window[s->strstart-1], bflush);
+        _zng_tr_tally_lit(s, s->window[s->strstart-1], bflush);
         s->match_available = 0;
     }
     s->insert = s->strstart < MIN_MATCH-1 ? s->strstart : MIN_MATCH-1;

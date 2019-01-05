@@ -42,7 +42,7 @@
         _mm_storeu_si128((__m128i *)s->crc0 + 4, xmm_crc_part);\
     } while (0);
 
-ZLIB_INTERNAL void crc_fold_init(deflate_state *const s) {
+ZLIB_INTERNAL void zng_crc_fold_init(deflate_state *const s) {
     CRC_LOAD(s)
 
     xmm_crc0 = _mm_cvtsi32_si128(0x9db42487);
@@ -247,7 +247,7 @@ static void partial_fold(const size_t len, __m128i *xmm_crc0, __m128i *xmm_crc1,
     *xmm_crc3 = _mm_castps_si128(ps_res);
 }
 
-ZLIB_INTERNAL void crc_fold_copy(deflate_state *const s, unsigned char *dst, const unsigned char *src, long len) {
+ZLIB_INTERNAL void zng_crc_fold_copy(deflate_state *const s, unsigned char *dst, const unsigned char *src, long len) {
     unsigned long algn_diff;
     __m128i xmm_t0, xmm_t1, xmm_t2, xmm_t3;
 
@@ -385,7 +385,7 @@ static const unsigned ALIGNED_(16) crc_mask2[4] = {
     0x00000000, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
 };
 
-uint32_t ZLIB_INTERNAL crc_fold_512to32(deflate_state *const s) {
+uint32_t ZLIB_INTERNAL zng_crc_fold_512to32(deflate_state *const s) {
     const __m128i xmm_mask  = _mm_load_si128((__m128i *)crc_mask);
     const __m128i xmm_mask2 = _mm_load_si128((__m128i *)crc_mask2);
 

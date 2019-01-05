@@ -326,35 +326,35 @@ static inline void put_short(deflate_state *s, uint16_t w) {
    memory checker errors from longest match routines */
 
 
-void ZLIB_INTERNAL fill_window_c(deflate_state *s);
+void ZLIB_INTERNAL zng_fill_window_c(deflate_state *s);
 
         /* in trees.c */
-void ZLIB_INTERNAL _tr_init(deflate_state *s);
-int ZLIB_INTERNAL _tr_tally(deflate_state *s, unsigned dist, unsigned lc);
-void ZLIB_INTERNAL _tr_flush_block(deflate_state *s, char *buf, unsigned long stored_len, int last);
-void ZLIB_INTERNAL _tr_flush_bits(deflate_state *s);
-void ZLIB_INTERNAL _tr_align(deflate_state *s);
-void ZLIB_INTERNAL _tr_stored_block(deflate_state *s, char *buf, unsigned long stored_len, int last);
-void ZLIB_INTERNAL bi_windup(deflate_state *s);
+void ZLIB_INTERNAL _zng_tr_init(deflate_state *s);
+int ZLIB_INTERNAL _zng_tr_tally(deflate_state *s, unsigned dist, unsigned lc);
+void ZLIB_INTERNAL _zng_tr_flush_block(deflate_state *s, char *buf, unsigned long stored_len, int last);
+void ZLIB_INTERNAL _zng_tr_flush_bits(deflate_state *s);
+void ZLIB_INTERNAL _zng_tr_align(deflate_state *s);
+void ZLIB_INTERNAL _zng_tr_stored_block(deflate_state *s, char *buf, unsigned long stored_len, int last);
+void ZLIB_INTERNAL zng_bi_windup(deflate_state *s);
 
-#define d_code(dist) ((dist) < 256 ? _dist_code[dist] : _dist_code[256+((dist)>>7)])
+#define d_code(dist) ((dist) < 256 ? _zng_dist_code[dist] : _zng_dist_code[256+((dist)>>7)])
 /* Mapping from a distance to a distance code. dist is the distance - 1 and
- * must not have side effects. _dist_code[256] and _dist_code[257] are never
+ * must not have side effects. _zng_dist_code[256] and _zng_dist_code[257] are never
  * used.
  */
 
 #ifndef ZLIB_DEBUG
-/* Inline versions of _tr_tally for speed: */
+/* Inline versions of _zng_tr_tally for speed: */
 
 # if defined(GEN_TREES_H)
-    extern unsigned char ZLIB_INTERNAL _length_code[];
-    extern unsigned char ZLIB_INTERNAL _dist_code[];
+    extern unsigned char ZLIB_INTERNAL _zng_length_code[];
+    extern unsigned char ZLIB_INTERNAL _zng_dist_code[];
 # else
-    extern const unsigned char ZLIB_INTERNAL _length_code[];
-    extern const unsigned char ZLIB_INTERNAL _dist_code[];
+    extern const unsigned char ZLIB_INTERNAL _zng_length_code[];
+    extern const unsigned char ZLIB_INTERNAL _zng_dist_code[];
 # endif
 
-# define _tr_tally_lit(s, c, flush) \
+# define _zng_tr_tally_lit(s, c, flush) \
   { unsigned char cc = (c); \
     s->sym_buf[s->sym_next++] = 0; \
     s->sym_buf[s->sym_next++] = 0; \
@@ -362,21 +362,21 @@ void ZLIB_INTERNAL bi_windup(deflate_state *s);
     s->dyn_ltree[cc].Freq++; \
     flush = (s->sym_next == s->sym_end); \
   }
-# define _tr_tally_dist(s, distance, length, flush) \
+# define _zng_tr_tally_dist(s, distance, length, flush) \
   { unsigned char len = (unsigned char)(length); \
     uint16_t dist = (uint16_t)(distance); \
     s->sym_buf[s->sym_next++] = dist; \
     s->sym_buf[s->sym_next++] = dist >> 8; \
     s->sym_buf[s->sym_next++] = len; \
     dist--; \
-    s->dyn_ltree[_length_code[len]+LITERALS+1].Freq++; \
+    s->dyn_ltree[_zng_length_code[len]+LITERALS+1].Freq++; \
     s->dyn_dtree[d_code(dist)].Freq++; \
     flush = (s->sym_next == s->sym_end); \
   }
 #else
-#   define _tr_tally_lit(s, c, flush) flush = _tr_tally(s, 0, c)
-#   define _tr_tally_dist(s, distance, length, flush) \
-              flush = _tr_tally(s, distance, length)
+#   define _zng_tr_tally_lit(s, c, flush) flush = _zng_tr_tally(s, 0, c)
+#   define _zng_tr_tally_dist(s, distance, length, flush) \
+              flush = _zng_tr_tally(s, distance, length)
 #endif
 
 /* ===========================================================================
@@ -415,7 +415,7 @@ void ZLIB_INTERNAL bi_windup(deflate_state *s);
 
 #else /* ZLIB_DEBUG */
 #  define send_code(s, c, tree) \
-    {  if (z_verbose > 2) { \
+    {  if (zng_z_verbose > 2) { \
            fprintf(stderr, "\ncd %3d ", (c)); \
        } \
        send_bits(s, tree[c].Code, tree[c].Len); \

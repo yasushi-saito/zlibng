@@ -121,7 +121,7 @@ static inline long compare258(const unsigned char *const src0, const unsigned ch
 }
 
 static const unsigned quick_len_codes[MAX_MATCH-MIN_MATCH+1];
-static const unsigned quick_dist_codes[8192];
+static const unsigned quick_zng_dist_codes[8192];
 
 static inline void quick_send_bits(deflate_state *const s,
                                    const int value1, const int length1,
@@ -159,8 +159,8 @@ static inline void quick_send_bits(deflate_state *const s,
 static inline void static_emit_ptr(deflate_state *const s, const int lc, const unsigned dist) {
     unsigned code1 = quick_len_codes[lc] >> 8;
     unsigned len1 =  quick_len_codes[lc] & 0xFF;
-    unsigned code2 = quick_dist_codes[dist-1] >> 8;
-    unsigned len2  = quick_dist_codes[dist-1] & 0xFF;
+    unsigned code2 = quick_zng_dist_codes[dist-1] >> 8;
+    unsigned len2  = quick_zng_dist_codes[dist-1] & 0xFF;
     quick_send_bits(s, code1, len1, code2, len2);
 }
 
@@ -184,7 +184,7 @@ static void static_emit_end_block(deflate_state *const s, int last) {
     Tracev((stderr, "\n+++ Emit End Block: Last: %u Pending: %u Total Out: %u\n", last, s->pending, s->strm->total_out));
 
     if (last)
-        bi_windup(s);
+        zng_bi_windup(s);
 
     s->block_start = s->strstart;
     flush_pending(s->strm);
@@ -346,7 +346,7 @@ static const unsigned quick_len_codes[MAX_MATCH-MIN_MATCH+1] = {
     0x001c230d, 0x001d230d, 0x001e230d, 0x0000a308,
 };
 
-static const unsigned quick_dist_codes[8192] = {
+static const unsigned quick_zng_dist_codes[8192] = {
     0x00000005, 0x00001005, 0x00000805, 0x00001805,
     0x00000406, 0x00002406, 0x00001406, 0x00003406,
     0x00000c07, 0x00002c07, 0x00004c07, 0x00006c07,

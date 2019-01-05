@@ -234,7 +234,7 @@ int ZEXPORT PREFIX(deflateInit2_)(PREFIX3(stream) *strm, int level, int method, 
     static const char my_version[] = PREFIX2(VERSION);
 
 #ifdef X86_CPUID
-    x86_check_features();
+    zng_x86_check_features();
 #endif
 
     if (version == NULL || version[0] != my_version[0] || stream_size != sizeof(PREFIX3(stream))) {
@@ -245,11 +245,11 @@ int ZEXPORT PREFIX(deflateInit2_)(PREFIX3(stream) *strm, int level, int method, 
 
     strm->msg = NULL;
     if (strm->zalloc == NULL) {
-        strm->zalloc = zcalloc;
+        strm->zalloc = zng_zcalloc;
         strm->opaque = NULL;
     }
     if (strm->zfree == NULL)
-        strm->zfree = zcfree;
+        strm->zfree = zng_zcfree;
 
     if (level == Z_DEFAULT_COMPRESSION)
         level = 6;
@@ -419,7 +419,7 @@ int ZEXPORT PREFIX(deflateSetDictionary)(PREFIX3(stream) *strm, const unsigned c
 
     /* when using zlib wrappers, compute Adler-32 for provided dictionary */
     if (wrap == 1)
-        strm->adler = functable.adler32(strm->adler, dictionary, dictLength);
+        strm->adler = zng_functable.adler32(strm->adler, dictionary, dictLength);
     s->wrap = 0;                    /* avoid computing Adler-32 in read_buf */
 
     /* if dictionary would fill window, just replace the history */
@@ -439,14 +439,14 @@ int ZEXPORT PREFIX(deflateSetDictionary)(PREFIX3(stream) *strm, const unsigned c
     next = strm->next_in;
     strm->avail_in = dictLength;
     strm->next_in = (const unsigned char *)dictionary;
-    functable.fill_window(s);
+    zng_functable.fill_window(s);
     while (s->lookahead >= MIN_MATCH) {
         str = s->strstart;
         n = s->lookahead - (MIN_MATCH-1);
-        functable.insert_string(s, str, n);
+        zng_functable.insert_string(s, str, n);
         s->strstart = str + n;
         s->lookahead = MIN_MATCH-1;
-        functable.fill_window(s);
+        zng_functable.fill_window(s);
     }
     s->strstart += s->lookahead;
     s->block_start = (long)s->strstart;
@@ -508,10 +508,10 @@ int ZEXPORT PREFIX(deflateResetKeep)(PREFIX3(stream) *strm) {
         crc_reset(s);
     else
 #endif
-        strm->adler = functable.adler32(0L, NULL, 0);
+        strm->adler = zng_functable.adler32(0L, NULL, 0);
     s->last_flush = Z_NO_FLUSH;
 
-    _tr_init(s);
+    _zng_tr_init(s);
 
     return Z_OK;
 }
@@ -562,7 +562,7 @@ int ZEXPORT PREFIX(deflatePrime)(PREFIX3(stream) *strm, int bits, int value) {
             put = bits;
         s->bi_buf |= (uint16_t)((value & ((1 << put) - 1)) << s->bi_valid);
         s->bi_valid += put;
-        _tr_flush_bits(s);
+        _zng_tr_flush_bits(s);
         value >>= put;
         bits -= put;
     } while (bits);
@@ -720,7 +720,7 @@ ZLIB_INTERNAL void flush_pending(PREFIX3(stream) *strm) {
     uint32_t len;
     deflate_state *s = strm->state;
 
-    _tr_flush_bits(s);
+    _zng_tr_flush_bits(s);
     len = s->pending;
     if (len > strm->avail_out)
         len = strm->avail_out;
@@ -822,7 +822,7 @@ int ZEXPORT PREFIX(deflate)(PREFIX3(stream) *strm, int flush) {
             putShortMSB(s, (uint16_t)(strm->adler >> 16));
             putShortMSB(s, (uint16_t)(strm->adler));
         }
-        strm->adler = functable.adler32(0L, NULL, 0);
+        strm->adler = zng_functable.adler32(0L, NULL, 0);
         s->status = BUSY_STATE;
 
         /* Compression must start with an empty pending buffer */
@@ -1007,9 +1007,9 @@ int ZEXPORT PREFIX(deflate)(PREFIX3(stream) *strm, int flush) {
         }
         if (bstate == block_done) {
             if (flush == Z_PARTIAL_FLUSH) {
-                _tr_align(s);
+                _zng_tr_align(s);
             } else if (flush != Z_BLOCK) { /* FULL_FLUSH or SYNC_FLUSH */
-                _tr_stored_block(s, (char*)0, 0L, 0);
+                _zng_tr_stored_block(s, (char*)0, 0L, 0);
                 /* For a full flush, this empty block will be recognized
                  * as a special marker by inflate_sync().
                  */
@@ -1157,7 +1157,7 @@ ZLIB_INTERNAL unsigned read_buf(PREFIX3(stream) *strm, unsigned char *buf, unsig
     {
         memcpy(buf, strm->next_in, len);
         if (strm->state->wrap == 1)
-            strm->adler = functable.adler32(strm->adler, buf, len);
+            strm->adler = zng_functable.adler32(strm->adler, buf, len);
     }
     strm->next_in  += len;
     strm->total_in += len;
@@ -1204,9 +1204,9 @@ void check_match(deflate_state *s, IPos start, IPos match, int length) {
         do {
             fprintf(stderr, "%c%c", s->window[match++], s->window[start++]);
         } while (--length != 0);
-        z_error("invalid match");
+        zng_z_error("invalid match");
     }
-    if (z_verbose > 1) {
+    if (zng_z_verbose > 1) {
         fprintf(stderr, "\\[%u,%d]", start-match, length);
         do {
             putc(s->window[start++], stderr);
@@ -1228,7 +1228,7 @@ void check_match(deflate_state *s, IPos start, IPos match, int length) {
  *    option -- not supported here).
  */
 
-void ZLIB_INTERNAL fill_window_c(deflate_state *s) {
+void ZLIB_INTERNAL zng_fill_window_c(deflate_state *s) {
     unsigned n;
     unsigned more;    /* Amount of free space at the end of the window. */
     unsigned int wsize = s->w_size;
@@ -1274,11 +1274,11 @@ void ZLIB_INTERNAL fill_window_c(deflate_state *s) {
             unsigned int str = s->strstart - s->insert;
             s->ins_h = s->window[str];
             if (str >= 1)
-                functable.insert_string(s, str + 2 - MIN_MATCH, 1);
+                zng_functable.insert_string(s, str + 2 - MIN_MATCH, 1);
 #if MIN_MATCH != 3
 #error Call insert_string() MIN_MATCH-3 more times
             while (s->insert) {
-                functable.insert_string(s, str, 1);
+                zng_functable.insert_string(s, str, 1);
                 str++;
                 s->insert--;
                 if (s->lookahead + s->insert < MIN_MATCH)
@@ -1291,7 +1291,7 @@ void ZLIB_INTERNAL fill_window_c(deflate_state *s) {
             }else{
                 count = s->insert;
             }
-            functable.insert_string(s,str,count);
+            zng_functable.insert_string(s,str,count);
             s->insert -= count;
 #endif
         }
@@ -1394,7 +1394,7 @@ static block_state deflate_stored(deflate_state *s, int flush) {
          * including any pending bits. This also updates the debugging counts.
          */
         last = flush == Z_FINISH && len == left + s->strm->avail_in ? 1 : 0;
-        _tr_stored_block(s, (char *)0, 0L, last);
+        _zng_tr_stored_block(s, (char *)0, 0L, last);
 
         /* Replace the lengths in the dummy stored block with len. */
         s->pending_buf[s->pending - 4] = len;
@@ -1512,7 +1512,7 @@ static block_state deflate_stored(deflate_state *s, int flush) {
         len = MIN(left, have);
         last = flush == Z_FINISH && s->strm->avail_in == 0 &&
                len == left ? 1 : 0;
-        _tr_stored_block(s, (char *)s->window + s->block_start, len, last);
+        _zng_tr_stored_block(s, (char *)s->window + s->block_start, len, last);
         s->block_start += len;
         flush_pending(s->strm);
     }
@@ -1538,7 +1538,7 @@ static block_state deflate_rle(deflate_state *s, int flush) {
          * for the longest run, plus one for the unrolled loop.
          */
         if (s->lookahead <= MAX_MATCH) {
-            functable.fill_window(s);
+            zng_functable.fill_window(s);
             if (s->lookahead <= MAX_MATCH && flush == Z_NO_FLUSH) {
                 return need_more;
             }
@@ -1570,7 +1570,7 @@ static block_state deflate_rle(deflate_state *s, int flush) {
         if (s->match_length >= MIN_MATCH) {
             check_match(s, s->strstart, s->strstart - 1, s->match_length);
 
-            _tr_tally_dist(s, 1, s->match_length - MIN_MATCH, bflush);
+            _zng_tr_tally_dist(s, 1, s->match_length - MIN_MATCH, bflush);
 
             s->lookahead -= s->match_length;
             s->strstart += s->match_length;
@@ -1578,7 +1578,7 @@ static block_state deflate_rle(deflate_state *s, int flush) {
         } else {
             /* No match, output a literal byte */
             Tracevv((stderr, "%c", s->window[s->strstart]));
-            _tr_tally_lit(s, s->window[s->strstart], bflush);
+            _zng_tr_tally_lit(s, s->window[s->strstart], bflush);
             s->lookahead--;
             s->strstart++;
         }
@@ -1605,7 +1605,7 @@ static block_state deflate_huff(deflate_state *s, int flush) {
     for (;;) {
         /* Make sure that we have a literal to write. */
         if (s->lookahead == 0) {
-            functable.fill_window(s);
+            zng_functable.fill_window(s);
             if (s->lookahead == 0) {
                 if (flush == Z_NO_FLUSH)
                     return need_more;
@@ -1616,7 +1616,7 @@ static block_state deflate_huff(deflate_state *s, int flush) {
         /* Output a literal byte */
         s->match_length = 0;
         Tracevv((stderr, "%c", s->window[s->strstart]));
-        _tr_tally_lit(s, s->window[s->strstart], bflush);
+        _zng_tr_tally_lit(s, s->window[s->strstart], bflush);
         s->lookahead--;
         s->strstart++;
         if (bflush)

@@ -141,14 +141,14 @@ extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 /* Diagnostic functions */
 #ifdef ZLIB_DEBUG
 #   include <stdio.h>
-    extern int ZLIB_INTERNAL z_verbose;
-    extern void ZLIB_INTERNAL z_error(char *m);
-#   define Assert(cond, msg) {if(!(cond)) z_error(msg);}
-#   define Trace(x) {if (z_verbose >= 0) fprintf x;}
-#   define Tracev(x) {if (z_verbose > 0) fprintf x;}
-#   define Tracevv(x) {if (z_verbose > 1) fprintf x;}
-#   define Tracec(c, x) {if (z_verbose > 0 && (c)) fprintf x;}
-#   define Tracecv(c, x) {if (z_verbose > 1 && (c)) fprintf x;}
+    extern int ZLIB_INTERNAL zng_z_verbose;
+    extern void ZLIB_INTERNAL zng_z_error(char *m);
+#   define Assert(cond, msg) {if(!(cond)) zng_z_error(msg);}
+#   define Trace(x) {if (zng_z_verbose >= 0) fprintf x;}
+#   define Tracev(x) {if (zng_z_verbose > 0) fprintf x;}
+#   define Tracevv(x) {if (zng_z_verbose > 1) fprintf x;}
+#   define Tracec(c, x) {if (zng_z_verbose > 0 && (c)) fprintf x;}
+#   define Tracecv(c, x) {if (zng_z_verbose > 1 && (c)) fprintf x;}
 #else
 #   define Assert(cond, msg)
 #   define Trace(x)
@@ -158,8 +158,8 @@ extern const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #   define Tracecv(c, x)
 #endif
 
-void ZLIB_INTERNAL *zcalloc(void *opaque, unsigned items, unsigned size);
-void ZLIB_INTERNAL   zcfree(void *opaque, void *ptr);
+void ZLIB_INTERNAL *zng_zcalloc(void *opaque, unsigned items, unsigned size);
+void ZLIB_INTERNAL   zng_zcfree(void *opaque, void *ptr);
 
 #define ZALLOC(strm, items, size) (*((strm)->zalloc))((strm)->opaque, (items), (size))
 #define ZFREE(strm, addr)         (*((strm)->zfree))((strm)->opaque, (void *)(addr))

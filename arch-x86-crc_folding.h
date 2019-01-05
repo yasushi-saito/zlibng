@@ -12,8 +12,8 @@
 
 #include "deflate.h"
 
-ZLIB_INTERNAL void crc_fold_init(deflate_state *const);
-ZLIB_INTERNAL uint32_t crc_fold_512to32(deflate_state *const);
-ZLIB_INTERNAL void crc_fold_copy(deflate_state *const, unsigned char *, const unsigned char *, long);
+ZLIB_INTERNAL void zng_crc_fold_init(deflate_state *const);
+ZLIB_INTERNAL uint32_t zng_crc_fold_512to32(deflate_state *const);
+ZLIB_INTERNAL void zng_crc_fold_copy(deflate_state *const, unsigned char *, const unsigned char *, long);
 
 #endif

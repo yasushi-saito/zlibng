@@ -243,7 +243,7 @@ const uint32_t * ZEXPORT PREFIX(get_crc_table)(void) {
 uint32_t ZEXPORT PREFIX(crc32_z)(uint32_t crc, const unsigned char *buf, size_t len) {
     if (buf == NULL) return 0;
 
-    return functable.crc32(crc, buf, len);
+    return zng_functable.crc32(crc, buf, len);
 }
 /* ========================================================================= */
 #define DO1 crc = crc_table[0][((int)crc ^ (*buf++)) & 0xff] ^ (crc >> 8)

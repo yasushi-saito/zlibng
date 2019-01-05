@@ -1,4 +1,4 @@
-/* functable.c -- Choose relevant optimized functions at runtime
+/* zng_functable.c -- Choose relevant optimized functions at runtime
  * Copyright (C) 2017 Hans Kristian Rosbach
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
@@ -57,51 +57,51 @@ ZLIB_INTERNAL uint32_t adler32_stub(uint32_t adler, const unsigned char *buf, si
 ZLIB_INTERNAL uint32_t crc32_stub(uint32_t crc, const unsigned char *buf, uint64_t len);
 
 /* functable init */
-ZLIB_INTERNAL __thread struct functable_s functable = {fill_window_stub,insert_string_stub,adler32_stub,crc32_stub};
+ZLIB_INTERNAL __thread struct functable_s zng_functable = {fill_window_stub,insert_string_stub,adler32_stub,crc32_stub};
 
 
 /* stub functions */
 ZLIB_INTERNAL Pos insert_string_stub(deflate_state *const s, const Pos str, unsigned int count) {
     // Initialize default
-    functable.insert_string=&insert_string_c;
+    zng_functable.insert_string=&insert_string_c;
 
     #ifdef X86_SSE4_2_CRC_HASH
     if (x86_cpu_has_sse42)
-        functable.insert_string=&insert_string_sse;
+        zng_functable.insert_string=&insert_string_sse;
     #elif defined(__ARM_FEATURE_CRC32) && defined(ARM_ACLE_CRC_HASH)
     if (arm_has_crc32())
-        functable.insert_string=&insert_string_acle;
+        zng_functable.insert_string=&insert_string_acle;
     #endif
 
-    return functable.insert_string(s, str, count);
+    return zng_functable.insert_string(s, str, count);
 }
 
 ZLIB_INTERNAL void fill_window_stub(deflate_state *s) {
     // Initialize default
-    functable.fill_window=&fill_window_c;
+    zng_functable.fill_window=&zng_fill_window_c;
 
     #ifdef X86_SSE2_FILL_WINDOW
     # ifndef X86_NOCHECK_SSE2
     if (x86_cpu_has_sse2)
     # endif
-        functable.fill_window=&fill_window_sse;
+        zng_functable.fill_window=&fill_window_sse;
     #elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM)
-        functable.fill_window=&fill_window_arm;
+        zng_functable.fill_window=&fill_window_arm;
     #endif
 
-    functable.fill_window(s);
+    zng_functable.fill_window(s);
 }
 
 ZLIB_INTERNAL uint32_t adler32_stub(uint32_t adler, const unsigned char *buf, size_t len) {
     // Initialize default
-    functable.adler32=&adler32_c;
+    zng_functable.adler32=&adler32_c;
 
     #if ((defined(__ARM_NEON__) || defined(__ARM_NEON)) && defined(ARM_NEON_ADLER32))
     if (arm_has_neon())
-        functable.adler32=&adler32_neon;
+        zng_functable.adler32=&adler32_neon;
     #endif
 
-    return functable.adler32(adler, buf, len);
+    return zng_functable.adler32(adler, buf, len);
 }
 
 ZLIB_INTERNAL uint32_t crc32_stub(uint32_t crc, const unsigned char *buf, uint64_t len) {
@@ -118,19 +118,19 @@ ZLIB_INTERNAL uint32_t crc32_stub(uint32_t crc, const unsigned char *buf, uint64
 
     if (sizeof(void *) == sizeof(ptrdiff_t)) {
 #if BYTE_ORDER == LITTLE_ENDIAN
-      functable.crc32=crc32_little;
+      zng_functable.crc32=crc32_little;
 #  if __ARM_FEATURE_CRC32 && defined(ARM_ACLE_CRC_HASH)
       if (arm_has_crc32())
-        functable.crc32=crc32_acle;
+        zng_functable.crc32=crc32_acle;
 #  endif
 #elif BYTE_ORDER == BIG_ENDIAN
-        functable.crc32=crc32_big;
+        zng_functable.crc32=crc32_big;
 #else
 #  error No endian defined
 #endif
     } else {
-        functable.crc32=crc32_generic;
+        zng_functable.crc32=crc32_generic;
     }
 
-    return functable.crc32(crc, buf, len);
+    return zng_functable.crc32(crc, buf, len);
 }
