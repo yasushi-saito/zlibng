@@ -1,6 +1,8 @@
 Cgo wrapper for zlib-ng (https://github.com/zlib-ng/zlib-ng).
 It provides the same interface as "compress/gzip".
 
+It currently supports only Linux+amd64.
+
 Benchmark results:
 
 CPU: Intel(R) Xeon(R) CPU E3-1505M v6 @ 3.00GHz
@@ -17,4 +19,21 @@ BenchmarkDeflateStandardGzip-8    	       1	10572484457 ns/op
 BenchmarkDeflateKlauspostGzip-8   	       1	2665946548 ns/op
 BenchmarkDeflateZlibNG-8          	       1	5886680851 ns/op
 BenchmarkDeflateCGZip-8           	       1	5069861793 ns/op
+```
+
+# Installation
+
+```
+go get github.com/yasushi-saito/zlibng
+```
+
+# Incorporating upstream changes
+
+```
+cd /tmp/
+git clone https://github.com/zlib-ng/zlib-ng.git
+git clone git@github.com:yasushi-saito/zlibng.git
+cd zlibng
+./patch.py ../zlib-ng
+git commit -a
 ```

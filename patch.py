@@ -2,7 +2,17 @@
 
 """This script modifies the zlib-ng source directory for cgo.
 
-It supports only amd64 currently.
+
+- Move files under arch/x86 to the toplevel directory, since cgo doesn't support subdirectories.
+
+- Add "zng_" prefix to non-static, hidden functions and variables. This is needed to allow mixing
+  libz and zlibng in a single binary. Otherwise if you import zlibng, and also use libz elsewhere, you'll get
+  symbol conflicts and worse random SEGVs.
+
+  Ideally zlibng should be doing this already, but this problem is especially
+  serious in this package since zlibng files are statically linked.
+
+Currently, this script supports only Linux+AMD64.
 
 """
 
