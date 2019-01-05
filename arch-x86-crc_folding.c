@@ -23,7 +23,7 @@
 #include <immintrin.h>
 #include <wmmintrin.h>
 
-#include "crc_folding.h"
+#include "arch-x86-crc_folding.h"
 
 
 #define CRC_LOAD(s) \

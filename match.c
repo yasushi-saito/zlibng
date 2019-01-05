@@ -31,7 +31,7 @@
 
 #if defined(_MSC_VER) && !defined(__clang__)
 # if defined(_M_IX86) || defined(_M_AMD64) || defined(_M_IA64)
-#  include "./ctzl.h"
+#  include "arch-x86-ctzl.h"
 # elif defined(_M_ARM)
 #  include "arch/arm/ctzl.h"
 # endif

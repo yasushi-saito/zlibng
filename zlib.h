@@ -1757,7 +1757,6 @@ ZEXTERN int ZEXPORT inflateBackInit_(z_stream *strm, int windowBits, unsigned ch
  * behavior could change in the future, perhaps even capriciously.  They can
  * only be used by the gzgetc() macro.  You have been warned.
  */
-
 struct gzFile_s {
     unsigned have;
     unsigned char *next;

@@ -11,7 +11,7 @@
 #include "gzendian.h"
 
 #if defined(X86_CPUID)
-# include "./x86.h"
+# include "arch-x86-x86.h"
 #elif (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM))
 extern int arm_has_crc32();
 extern int arm_has_neon();

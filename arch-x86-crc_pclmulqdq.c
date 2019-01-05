@@ -5,8 +5,8 @@
  */
 
 #include "zbuild.h"
-#include "x86.h"
-#include "crc_folding.h"
+#include "./arch-x86-x86.h"
+#include "arch-x86-crc_folding.h"
 #include "deflate.h"
 
 #ifdef X86_PCLMULQDQ_CRC
