@@ -37,6 +37,9 @@ def patch_file(src_path: str, dst_path: str):
         ('ct_data_staic_ltree', 'zng_ct_data_staic_ltree'),
         ('z_verbose', 'zng_z_verbose'),
         ('z_error', 'zng_z_error'),
+        ('z_errmsg', 'zng_z_errmsg'),
+        ('deflate_copyright', 'zng_deflate_copyright'),
+        ('inflate_copyright', 'zng_inflate_copyright'),
         ('zcalloc', 'zng_zcalloc'),
         ('zcfree', 'zng_zcfree'),
         ('zng_functable.h\"', 'functable.h"'),  # undo the include name change

@@ -14,7 +14,7 @@
 #  include "malloc.h"
 #endif
 
-const char * const z_errmsg[10] = {
+const char * const zng_z_errmsg[10] = {
     (const char *)"need dictionary",     /* Z_NEED_DICT       2  */
     (const char *)"stream end",          /* Z_STREAM_END      1  */
     (const char *)"",                    /* Z_OK              0  */
