@@ -35,22 +35,18 @@ type reader struct {
 	err        error
 }
 
-// defaultBufferSize is the default buffer size used by NewBuffer.
-const defaultBufferSize = 512 * 1024
-
-// NewReader creates a gzip reader with 512KB buffer.
-func NewReader(r io.Reader) (io.ReadCloser, error) {
-	return NewReaderBuffer(r, defaultBufferSize)
-}
-
-// NewReaderBuffer creates a new gzip reader with a given prefetch buffer size.
-func NewReaderBuffer(in io.Reader, bufSize int) (io.ReadCloser, error) {
+// NewReader creates a gzip/flate writer. There can be at most one options arg.
+func NewReader(in io.Reader, opts ...Opts) (io.ReadCloser, error) {
+	opt, err := getOpts(opts...)
+	if err != nil {
+		return nil, err
+	}
 	z := &reader{
 		in:         in,
-		inBuf:      make([]byte, bufSize),
+		inBuf:      make([]byte, opt.Buffer),
 		inConsumed: true, // force in.Read
 	}
-	ec := C.zs_inflate_init(&z.zs[0])
+	ec := C.zs_inflate_init(&z.zs[0], C.int(opt.Format))
 	if ec != 0 {
 		return nil, zlibReturnCodeToError(ec)
 	}
@@ -122,23 +118,20 @@ type writer struct {
 	out    io.Writer
 	zs     zstream // underlying zlib implementation.
 	outBuf []byte
-	err    error
 }
 
-// NewWriter creates a gzip writer with default settings.
-func NewWriter(w io.Writer) (io.WriteCloser, error) {
-	return NewWriterLevel(w, -1, defaultBufferSize)
-}
-
-// NewWriterLevel creates a gzip writer. Level is the compression level; -1
-// means the default level. bufSize is the internal buffer size. It defaults to
-// 512KB.
-func NewWriterLevel(w io.Writer, level int, bufSize int) (io.WriteCloser, error) {
+// NewWriter creates a gzip/flate writer. There can be at most one options arg.
+// If opts is empty, NewWriter will use Opts{Format:Gzip,Level:-1}.
+func NewWriter(w io.Writer, opts ...Opts) (io.WriteCloser, error) {
+	opt, err := getOpts(opts...)
+	if err != nil {
+		return nil, err
+	}
 	z := &writer{
 		out:    w,
-		outBuf: make([]byte, bufSize),
+		outBuf: make([]byte, opt.Buffer),
 	}
-	ec := C.zs_deflate_init(&z.zs[0], C.int(level))
+	ec := C.zs_deflate_init(&z.zs[0], C.int(opt.Format), C.int(opt.Level))
 	if ec != 0 {
 		return nil, zlibReturnCodeToError(ec)
 	}

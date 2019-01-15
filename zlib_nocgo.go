@@ -5,27 +5,31 @@ package zlibng
 import (
 	"io"
 
+	"github.com/klauspost/compress/flate"
 	"github.com/klauspost/compress/gzip"
 )
 
-// NewReader creates a gzip reader with 512KB buffer.
-func NewReader(r io.Reader) (io.ReadCloser, error) {
-	return gzip.NewReader(r)
+// NewReader creates a gzip/flate writer. There can be at most one options arg.
+func NewReader(in io.Reader, opts ...Opts) (io.ReadCloser, error) {
+	opt, err := getOpts(opts...)
+	if err != nil {
+		return nil, err
+	}
+	if opt.Format == Gzip {
+		return gzip.NewReader(in)
+	}
+	return flate.NewReader(in), nil
 }
 
-// NewReaderBuffer creates a new gzip reader with a given prefetch buffer size.
-func NewReaderBuffer(r io.Reader, bufSize int) (io.ReadCloser, error) {
-	return gzip.NewReader(r)
-}
-
-// NewWriter creates a gzip writer with default settings.
-func NewWriter(w io.Writer) (io.WriteCloser, error) {
-	return gzip.NewWriterLevel(w, -1)
-}
-
-// NewWriterLevel creates a gzip writer. Level is the compression level; -1
-// means the default level. bufSize is the internal buffer size. It defaults to
-// 512KB.
-func NewWriterLevel(w io.Writer, level int, bufSize int) (io.WriteCloser, error) {
-	return gzip.NewWriterLevel(w, level)
+// NewWriter creates a gzip/flate writer. There can be at most one options arg.
+// If opts is empty, NewWriter will use Opts{Format:Gzip,Level:-1}.
+func NewWriter(w io.Writer, opts ...Opts) (io.WriteCloser, error) {
+	opt, err := getOpts(opts...)
+	if err != nil {
+		return nil, err
+	}
+	if opt.Format == Gzip {
+		return gzip.NewWriterLevel(w, opt.Level)
+	}
+	return flate.NewWriter(w, opt.Level)
 }

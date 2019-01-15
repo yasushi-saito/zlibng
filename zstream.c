@@ -5,11 +5,15 @@
 #include <string.h>
 #include "./zlib-ng.h"
 
-int zs_inflate_init(char* stream) {
+int zs_inflate_init(char* stream, int format) {
+  int flags = 32 + 15; // autodetect gzip or zlib
+  if (format != 0) {
+    flags = -15; // flate
+  }
   zng_stream* zs = (zng_stream*)stream;
   memset(zs, 0, sizeof(*zs));
-  // 16 makes it understand only gzip files
-  return zng_inflateInit2(zs, 16 + 15);
+  // 32 makes it autodetect gzip or flate files
+  return zng_inflateInit2(zs, flags);
 }
 
 void zs_inflate_end(char* stream) { zng_inflateEnd((zng_stream*)stream); }
@@ -45,10 +49,14 @@ int zs_inflate(char* stream, void* in, int in_bytes, void* out, int* out_bytes,
   return ret;
 }
 
-int zs_deflate_init(char* stream, int level) {
+int zs_deflate_init(char* stream, int format, int level) {
+  int flags = 16 + 15; // gzip
+  if  (format != 0) {
+    flags = -15;
+  }
   zng_stream* zs = (zng_stream*)stream;
   memset(zs, 0, sizeof(*zs));
-  return zng_deflateInit2(zs, level, Z_DEFLATED, 16 + 15, 8,
+  return zng_deflateInit2(zs, level, Z_DEFLATED, flags, 8,
                           Z_DEFAULT_STRATEGY);
 }
 

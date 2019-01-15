@@ -3,6 +3,7 @@ package zlibng_test
 import (
 	"bufio"
 	"bytes"
+	"compress/flate"
 	"compress/gzip"
 	"flag"
 	"io"
@@ -15,12 +16,12 @@ import (
 
 	"github.com/grailbio/testutil/assert"
 	kgzip "github.com/klauspost/compress/gzip"
-	"github.com/yasushi-saito/zlibng"
 	"github.com/vitessio/vitess/go/cgzip"
+	"github.com/yasushi-saito/zlibng"
 )
 
-func testInflate(t *testing.T, r *rand.Rand, src []byte, want []byte) {
-	zin, err := zlibng.NewReader(bytes.NewReader(src))
+func testInflate(t *testing.T, r *rand.Rand, format zlibng.Format, src []byte, want []byte) {
+	zin, err := zlibng.NewReader(bytes.NewReader(src), zlibng.Opts{Format: format})
 	assert.NoError(t, err)
 
 	var (
@@ -54,15 +55,24 @@ func testInflate(t *testing.T, r *rand.Rand, src []byte, want []byte) {
 	}
 }
 
-func TestInflateEmpty(t *testing.T) {
+func TestInflateGzipEmpty(t *testing.T) {
 	compressed := bytes.Buffer{}
-	gz := gzip.NewWriter(&compressed)
-	assert.NoError(t, gz.Close())
+	w := gzip.NewWriter(&compressed)
+	assert.NoError(t, w.Close())
 	r := rand.New(rand.NewSource(0))
-	testInflate(t, r, compressed.Bytes(), nil)
+	testInflate(t, r, zlibng.Gzip, compressed.Bytes(), nil)
 }
 
-func TestInflateSmall(t *testing.T) {
+func TestInflateFlateEmpty(t *testing.T) {
+	compressed := bytes.Buffer{}
+	w, err := flate.NewWriter(&compressed, flate.DefaultCompression)
+	assert.NoError(t, err)
+	assert.NoError(t, w.Close())
+	r := rand.New(rand.NewSource(0))
+	testInflate(t, r, zlibng.Flate, compressed.Bytes(), nil)
+}
+
+func TestInflateGzipSmall(t *testing.T) {
 	data := []byte("Blah")
 	compressed := bytes.Buffer{}
 	gz := gzip.NewWriter(&compressed)
@@ -70,13 +80,35 @@ func TestInflateSmall(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, gz.Close())
 	r := rand.New(rand.NewSource(0))
-	testInflate(t, r, compressed.Bytes(), data)
+	testInflate(t, r, zlibng.Gzip, compressed.Bytes(), data)
+}
+
+func TestInflateFlateSmall(t *testing.T) {
+	data := []byte("Blah")
+	compressed := bytes.Buffer{}
+	w, err := flate.NewWriter(&compressed, flate.DefaultCompression)
+	assert.NoError(t, err)
+	_, err = w.Write(data)
+	assert.NoError(t, err)
+	assert.NoError(t, w.Close())
+	r := rand.New(rand.NewSource(0))
+	testInflate(t, r, zlibng.Flate, compressed.Bytes(), data)
+}
+
+func TestDeflateFlateEmpty(t *testing.T) {
+	r := rand.New(rand.NewSource(0))
+	testDeflate(t, r, zlibng.Flate, nil)
+}
+
+func TestDeflateFlateSmall(t *testing.T) {
+	r := rand.New(rand.NewSource(0))
+	testDeflate(t, r, zlibng.Flate, []byte("Blah"))
 }
 
 func TestInflateRandom(t *testing.T) {
 	r := rand.New(rand.NewSource(0))
 	for i := 0; i < 20; i++ {
-		n := r.Intn(16 << 20) + 1
+		n := r.Intn(16<<20) + 1
 		log.Printf("%d: n=%d", i, n)
 		uncompressed := make([]byte, n)
 		_, err := r.Read(uncompressed)
@@ -87,7 +119,7 @@ func TestInflateRandom(t *testing.T) {
 		_, err = gz.Write(uncompressed)
 		assert.NoError(t, err)
 		assert.NoError(t, gz.Close())
-		testInflate(t, r, compressed.Bytes(), uncompressed)
+		testInflate(t, r, zlibng.Gzip, compressed.Bytes(), uncompressed)
 	}
 }
 
@@ -100,7 +132,7 @@ func TestInflateRandomPacked(t *testing.T) {
 
 		log.Printf("%d", i)
 		for j := 0; j < 10; j++ {
-			n := r.Intn(2 << 20) + 1
+			n := r.Intn(2<<20) + 1
 			buf := make([]byte, n)
 			_, err := r.Read(buf)
 			assert.NoError(t, err)
@@ -111,14 +143,14 @@ func TestInflateRandomPacked(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NoError(t, gz.Close())
 		}
-		testInflate(t, r, compressed.Bytes(), uncompressed.Bytes())
+		testInflate(t, r, zlibng.Gzip, compressed.Bytes(), uncompressed.Bytes())
 	}
 }
 
-func testDeflate(t *testing.T, r *rand.Rand, src []byte) {
+func testDeflate(t *testing.T, r *rand.Rand, format zlibng.Format, src []byte) {
 	orgSrc := src
 	out := bytes.Buffer{}
-	zout, err := zlibng.NewWriter(&out)
+	zout, err := zlibng.NewWriter(&out, zlibng.Opts{Format:format,Level:-1})
 	assert.NoError(t, err)
 
 	for len(src) > 0 {
@@ -134,8 +166,14 @@ func testDeflate(t *testing.T, r *rand.Rand, src []byte) {
 	assert.NoError(t, zout.Close())
 
 	got := bytes.Buffer{}
-	zin, err := gzip.NewReader(bytes.NewReader(out.Bytes()))
-	assert.NoError(t, err)
+	var zin io.Reader
+	if format == zlibng.Gzip {
+		zin, err = gzip.NewReader(bytes.NewReader(out.Bytes()))
+		assert.NoError(t, err)
+	} else {
+		zin = flate.NewReader(bytes.NewReader(out.Bytes()))
+		assert.NoError(t, err)
+	}
 	n, err := io.Copy(&got, zin)
 	assert.NoError(t, err)
 	assert.EQ(t, int(n), len(orgSrc))
@@ -152,7 +190,7 @@ func TestDeflateRandom(t *testing.T) {
 		data := make([]byte, n)
 		_, err := r.Read(data)
 		assert.NoError(t, err)
-		testDeflate(t, r, data)
+		testDeflate(t, r, zlibng.Gzip, data)
 	}
 }
 
@@ -302,7 +340,7 @@ func BenchmarkInflateKlauspostGzip(b *testing.B) {
 func BenchmarkInflateZlibNG(b *testing.B) {
 	benchmarkInflate(b, *testSmallPathFlag,
 		func(in io.Reader) (io.Reader, error) {
-			return zlibng.NewReaderBuffer(in, 512<<10)
+			return zlibng.NewReader(in, zlibng.Opts{Buffer: 512 << 10})
 		})
 }
 
@@ -360,7 +398,7 @@ func BenchmarkDeflateKlauspostGzip(b *testing.B) {
 func BenchmarkDeflateZlibNG(b *testing.B) {
 	benchmarkDeflate(b, *testPathFlag,
 		func(out io.Writer) io.WriteCloser {
-			w, err := zlibng.NewWriterLevel(out, 5, 512<<10)
+			w, err := zlibng.NewWriter(out, zlibng.Opts{Level: 5, Buffer: 512 << 10})
 			assert.NoError(b, err)
 			return w
 		})

@@ -1,5 +1,5 @@
 Cgo wrapper for zlib-ng (https://github.com/zlib-ng/zlib-ng).
-It provides the same interface as "compress/gzip".
+It provides the same interface as "compress/gzip" and "compress/flate".
 
 It currently supports only {linux,darwin}/amd64.
 

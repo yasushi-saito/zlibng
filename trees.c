@@ -260,7 +260,7 @@ void gen_trees_header() {
 
     fprintf(header, "/* header created automatically with -DGEN_TREES_H */\n\n");
 
-    fprintf(header, "ZLIB_INTERNAL const ct_data static_ltree[L_CODES+2] = {\n");
+    fprintf(header, "ZLIB_INTERNAL extern const ct_data static_ltree[L_CODES+2] = {\n");
     for (i = 0; i < L_CODES+2; i++) {
         fprintf(header, "{{%3u},{%3u}}%s", static_ltree[i].Code, static_ltree[i].Len, SEPARATOR(i, L_CODES+1, 5));
     }

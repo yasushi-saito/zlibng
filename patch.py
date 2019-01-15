@@ -54,6 +54,7 @@ def patch_file(src_path: str, dst_path: str):
         ('inflate_copyright', 'zng_inflate_copyright'),
         ('zcalloc', 'zng_zcalloc'),
         ('zcfree', 'zng_zcfree'),
+        ('const ct_data static_ltree', 'extern const ct_data static_ltree'),
         ('zng_functable.h\"', 'functable.h"'),  # undo the include name change
     ]
     logging.info('%s -> %s', src_path, dst_path)
