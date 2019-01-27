@@ -105,6 +105,39 @@ func TestDeflateFlateSmall(t *testing.T) {
 	testDeflate(t, r, zlibng.Flate, []byte("Blah"))
 }
 
+func TestDeflateHeader(t *testing.T) {
+	out := bytes.Buffer{}
+	zout, err := zlibng.NewWriter(&out)
+	assert.NoError(t, err)
+	wantHeader := zlibng.GzipHeader{Comment: "hello", Time: 12345, OS: 11}
+	assert.NoError(t, zout.SetHeader(wantHeader))
+	data := []byte("testdata")
+	n, err := zout.Write(data)
+	assert.NoError(t, err)
+	assert.EQ(t, n, len(data))
+	assert.NoError(t, zout.Close())
+	{
+		zin, err := zlibng.NewReader(bytes.NewReader(out.Bytes()),
+			zlibng.Opts{GetGzipHeader: true})
+		assert.NoError(t, err)
+		got := bytes.Buffer{}
+		_, err = io.Copy(&got, zin)
+		assert.NoError(t, err)
+		assert.EQ(t, string(got.Bytes()), string(data))
+		gotHeader, err := zin.Header()
+		assert.NoError(t, err)
+		assert.EQ(t, gotHeader, wantHeader)
+	}
+	{
+		zin, err := gzip.NewReader(bytes.NewReader(out.Bytes()))
+		assert.NoError(t, err)
+		got := bytes.Buffer{}
+		_, err = io.Copy(&got, zin)
+		assert.NoError(t, err)
+		assert.EQ(t, string(got.Bytes()), string(data))
+	}
+}
+
 func TestInflateRandom(t *testing.T) {
 	r := rand.New(rand.NewSource(0))
 	for i := 0; i < 20; i++ {
@@ -150,7 +183,7 @@ func TestInflateRandomPacked(t *testing.T) {
 func testDeflate(t *testing.T, r *rand.Rand, format zlibng.Format, src []byte) {
 	orgSrc := src
 	out := bytes.Buffer{}
-	zout, err := zlibng.NewWriter(&out, zlibng.Opts{Format:format,Level:-1})
+	zout, err := zlibng.NewWriter(&out, zlibng.Opts{Format: format, Level: -1})
 	assert.NoError(t, err)
 
 	for len(src) > 0 {
@@ -196,9 +229,9 @@ func TestDeflateRandom(t *testing.T) {
 
 var (
 	testSmallPathFlag = flag.String("small-path",
-		"/tmp/get-pip.py", "Plain-text file used for small tests")
+		"/scratch-nvme/cache_tmp/get-pip.py", "Plain-text file used for small tests")
 	testPathFlag = flag.String("path",
-		"/home/ysaito/CNVS-NORM-110033752-cfDNA-WGBS-Rep1_S1_L001_R1_001.fastq", "Plain-text file used for in tests and benchmarks")
+		"/scratch-nvme/cache_tmp/CNVS-NORM-110033752-cfDNA-WGBS-Rep1_S1_L001_R1_001.fastq", "Plain-text file used for in tests and benchmarks")
 	testGZPathFlag = flag.String("gz-path",
 		"/scratch-nvme/cache_tmp/170206_ARTLoD_B1_01rerun_S1_L001_R1_001.fastq.gz",
 		"Gzipped file used in tests and benchmarks")

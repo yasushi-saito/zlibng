@@ -6,9 +6,9 @@
 #include "./zlib-ng.h"
 
 int zs_inflate_init(char* stream, int format) {
-  int flags = 32 + 15; // autodetect gzip or zlib
+  int flags = 32 + 15;  // autodetect gzip or zlib
   if (format != 0) {
-    flags = -15; // flate
+    flags = -15;  // flate
   }
   zng_stream* zs = (zng_stream*)stream;
   memset(zs, 0, sizeof(*zs));
@@ -49,15 +49,24 @@ int zs_inflate(char* stream, void* in, int in_bytes, void* out, int* out_bytes,
   return ret;
 }
 
-int zs_deflate_init(char* stream, int format, int level) {
-  int flags = 16 + 15; // gzip
-  if  (format != 0) {
-    flags = -15;
+int zs_deflate_init(char* stream, int format, int level, int window_bits,
+                    int mem_level, int strategy) {
+  if (window_bits == 0) {
+    window_bits = 16 + 15;  // gzip
+    if (format != 0) {
+      window_bits = -15;
+    }
+  }
+  if (mem_level == 0) {
+    mem_level = 8;
+  }
+  if (strategy == 0) {
+    strategy = Z_DEFAULT_STRATEGY;
   }
   zng_stream* zs = (zng_stream*)stream;
   memset(zs, 0, sizeof(*zs));
-  return zng_deflateInit2(zs, level, Z_DEFLATED, flags, 8,
-                          Z_DEFAULT_STRATEGY);
+  return zng_deflateInit2(zs, level, Z_DEFLATED, window_bits, mem_level,
+                          strategy);
 }
 
 int zs_deflate(char* stream, void* in, int in_bytes, void* out,
@@ -92,4 +101,12 @@ int zs_deflate_end(char* stream, void* out, int* out_bytes) {
     zng_deflateEnd(zs);
   }
   return ret;
+}
+
+int zs_deflate_set_header(char* stream, zng_gz_header* h) {
+  return zng_deflateSetHeader((zng_stream*)stream, h);
+}
+
+int zs_inflate_get_header(char* stream, zng_gz_header* h) {
+  return zng_inflateGetHeader((zng_stream*)stream, h);
 }

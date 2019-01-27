@@ -1,7 +1,14 @@
 Cgo wrapper for zlib-ng (https://github.com/zlib-ng/zlib-ng).
-It provides the same interface as "compress/gzip" and "compress/flate".
-
 It currently supports only {linux,darwin}/amd64.
+
+- The reader implements io.Reader, the writer implements
+  io.WriteCloser.
+
+- Supports both gzip and flate formats.
+
+- Supports multi-part archive (concatenated gzip/flate file).
+
+- Supports reading and writing the gzip header.
 
 Benchmark results:
 

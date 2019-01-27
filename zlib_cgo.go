@@ -9,6 +9,7 @@ package zlibng
 #cgo darwin CFLAGS: -march=ivybridge -std=c99 -Wall -DHAVE_HIDDEN -DHAVE_INTERNAL -DHAVE_BUILTIN_CTZL -DMEDIUM_STRATEGY -DX86_64 -DX86_NOCHECK_SSE2 -DUNALIGNED_OK -DUNROLL_LESS -DX86_CPUID -DX86_SSE2_FILL_WINDOW -DX86_SSE4_2_CRC_HASH -DX86_SSE4_2_CRC_INTRIN -DX86_PCLMULQDQ_CRC -DX86_QUICK_STRATEGY -I.
 
 #include <errno.h>
+#include <stdlib.h>
 #include "./zlib-ng.h"
 #include "./zstream.h"
 
@@ -21,27 +22,36 @@ import (
 	"io"
 	"unsafe"
 
+	"runtime"
+
 	"golang.org/x/sys/unix"
 )
 
 type zstream [unsafe.Sizeof(C.zng_stream{})]C.char
 
-type reader struct {
-	in         io.Reader
-	inConsumed bool    // true if zstream has finished consuming the current input buffer.
-	inEOF      bool    // true if in reaches io.EOF
-	zs         zstream // underlying zlib implementation.
-	inBuf      []byte
-	err        error
+// Reader is a gzip/zlib/flate reader. It implements io.Reader.
+type Reader struct {
+	in          io.Reader
+	inConsumed  bool    // true if zstream has finished consuming the current input buffer.
+	inEOF       bool    // true if in reaches io.EOF
+	hasGzHeader bool    // true if gzHeader was successfully set.
+	zs          zstream // underlying zlib implementation.
+	gzHeader    C.zng_gz_header
+	inBuf       []byte
+	err         error
+}
+
+func freeGzHeader(r *Reader) {
+	freeGzHeaderFields(&r.gzHeader)
 }
 
 // NewReader creates a gzip/flate writer. There can be at most one options arg.
-func NewReader(in io.Reader, opts ...Opts) (io.ReadCloser, error) {
+func NewReader(in io.Reader, opts ...Opts) (*Reader, error) {
 	opt, err := getOpts(opts...)
 	if err != nil {
 		return nil, err
 	}
-	z := &reader{
+	z := &Reader{
 		in:         in,
 		inBuf:      make([]byte, opt.Buffer),
 		inConsumed: true, // force in.Read
@@ -50,11 +60,46 @@ func NewReader(in io.Reader, opts ...Opts) (io.ReadCloser, error) {
 	if ec != 0 {
 		return nil, zlibReturnCodeToError(ec)
 	}
+	if opt.GetGzipHeader {
+		const maxStringLen = 256
+		z.gzHeader.comment = (*C.uchar)(C.malloc(maxStringLen))
+		z.gzHeader.comm_max = maxStringLen
+		z.gzHeader.name = (*C.uchar)(C.malloc(maxStringLen))
+		z.gzHeader.name_max = maxStringLen
+		ec = C.zs_inflate_get_header(&z.zs[0], &z.gzHeader)
+		if ec != 0 {
+			freeGzHeader(z)
+			return nil, zlibReturnCodeToError(ec)
+		}
+		z.hasGzHeader = true
+		runtime.SetFinalizer(z, freeGzHeader)
+	}
 	return z, nil
 }
 
+// Header reads the gzip header contents. If the file is a multi-gzip
+// concatenation, this function returns the contents of the current archive.
+//
+// REQUIRES: Opts.GetGzipHeader=true when the reader was created.
+func (z *Reader) Header() (GzipHeader, error) {
+	if !z.hasGzHeader {
+		return GzipHeader{}, errors.New("zlibng.reader.header: Opts.GetGzipHeader not set")
+	}
+	h := GzipHeader{}
+	if z.gzHeader.comment != nil {
+		h.Comment = C.GoString((*C.char)(unsafe.Pointer(z.gzHeader.comment)))
+	}
+	// TODO(saito) get header.
+	if z.gzHeader.name != nil {
+		h.Name = C.GoString((*C.char)(unsafe.Pointer(z.gzHeader.name)))
+	}
+	h.Time = uint64(z.gzHeader.time)
+	h.OS = int(z.gzHeader.os)
+	return h, nil
+}
+
 // Close implements io.Closer.
-func (z *reader) Close() error {
+func (z *Reader) Close() error {
 	C.zs_inflate_end(&z.zs[0])
 	if z.err == io.EOF {
 		return nil
@@ -63,7 +108,7 @@ func (z *reader) Close() error {
 }
 
 // Read implements io.Reader.
-func (z *reader) Read(out []byte) (int, error) {
+func (z *Reader) Read(out []byte) (int, error) {
 	var orgOut = out
 	for z.err == nil && len(out) > 0 {
 		var (
@@ -114,31 +159,61 @@ func (z *reader) Read(out []byte) (int, error) {
 	return len(orgOut) - len(out), z.err
 }
 
-type writer struct {
-	out    io.Writer
-	zs     zstream // underlying zlib implementation.
-	outBuf []byte
+// Writer is the gzip/flate writer. It implements io.WriterCloser.
+type Writer struct {
+	out      io.Writer
+	zs       zstream // underlying zlib implementation.
+	gzHeader C.zng_gz_header
+	outBuf   []byte
 }
 
 // NewWriter creates a gzip/flate writer. There can be at most one options arg.
 // If opts is empty, NewWriter will use Opts{Format:Gzip,Level:-1}.
-func NewWriter(w io.Writer, opts ...Opts) (io.WriteCloser, error) {
+func NewWriter(w io.Writer, opts ...Opts) (*Writer, error) {
 	opt, err := getOpts(opts...)
 	if err != nil {
 		return nil, err
 	}
-	z := &writer{
+	z := &Writer{
 		out:    w,
 		outBuf: make([]byte, opt.Buffer),
 	}
-	ec := C.zs_deflate_init(&z.zs[0], C.int(opt.Format), C.int(opt.Level))
+	ec := C.zs_deflate_init(&z.zs[0], C.int(opt.Format), C.int(opt.Level),
+		C.int(opt.WindowBits), C.int(opt.MemLevel), C.int(opt.Strategy))
 	if ec != 0 {
 		return nil, zlibReturnCodeToError(ec)
 	}
 	return z, nil
 }
 
-func (z *writer) push(data []byte) error {
+// SetHeader sets the Gzip header contents.
+//
+// REQUIRES: No Write nor Close has been called yet.
+// REQUIRES: The archive format is Gzip.
+func (z *Writer) SetHeader(h GzipHeader) error {
+	// comment, extra, and name should be null unless the value is
+	// actually set to something.
+	if len(h.Comment) > 0 {
+		z.gzHeader.comment = (*C.uchar)(unsafe.Pointer(C.CString(h.Comment)))
+	}
+	if len(h.Extra) > 0 {
+		z.gzHeader.extra = (*C.uchar)(C.CBytes(h.Extra))
+		z.gzHeader.extra_len = C.uint(len(h.Extra))
+	}
+	if len(h.Name) > 0 {
+		z.gzHeader.name = (*C.uchar)(unsafe.Pointer(C.CString(h.Name)))
+	}
+	if h.Time != 0 {
+		z.gzHeader.time = C.ulong(h.Time)
+	}
+	if h.OS != 0 {
+		z.gzHeader.os = C.int(h.OS)
+	}
+	ec := C.zs_deflate_set_header(&z.zs[0], &z.gzHeader)
+	return zlibReturnCodeToError(ec)
+}
+
+func (z *Writer) push(data []byte) error {
 	n, err := z.out.Write(data)
 	if err != nil {
 		return err
@@ -149,8 +224,21 @@ func (z *writer) push(data []byte) error {
 	return nil
 }
 
+func freeGzHeaderFields(h *C.zng_gz_header) {
+	if h.comment != nil {
+		C.free(unsafe.Pointer(h.comment))
+	}
+	if h.extra != nil {
+		C.free(unsafe.Pointer(h.extra))
+	}
+	if h.name != nil {
+		C.free(unsafe.Pointer(h.name))
+	}
+}
+
 // Close implements io.Closer
-func (z *writer) Close() error {
+func (z *Writer) Close() error {
+	defer freeGzHeaderFields(&z.gzHeader)
 	for {
 		outLen := C.int(len(z.outBuf))
 		ret := C.zs_deflate_end(&z.zs[0], unsafe.Pointer(&z.outBuf[0]), &outLen)
@@ -168,7 +256,7 @@ func (z *writer) Close() error {
 }
 
 // Write implements io.Writer.
-func (z *writer) Write(in []byte) (int, error) {
+func (z *Writer) Write(in []byte) (int, error) {
 	if len(in) == 0 {
 		return 0, nil
 	}
