@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/yasushi-saito/zlibng?status.svg)](https://godoc.org/github.com/yasushi-saito/zlibng)
+
 Cgo wrapper for zlib-ng (https://github.com/zlib-ng/zlib-ng).
 It currently supports only {linux,darwin}/amd64.
 
