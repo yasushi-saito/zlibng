@@ -20,16 +20,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"unsafe"
-
 	"runtime"
+	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
 
 type zstream [unsafe.Sizeof(C.zng_stream{})]C.char
 
-// Reader is a gzip/zlib/flate reader. It implements io.Reader.
+// Reader is a gzip/zlib/flate reader. It implements io.ReadCloser.  Calling
+// Close is optional, though recommended.  NewReader() also installs a GC
+// finalizer that closes the Reader, in case the application forgets to call
+// Close.
 type Reader struct {
 	in          io.Reader
 	inConsumed  bool    // true if zstream has finished consuming the current input buffer.
@@ -41,11 +43,12 @@ type Reader struct {
 	err         error
 }
 
-func freeGzHeader(r *Reader) {
-	freeGzHeaderFields(&r.gzHeader)
+func freeReader(z* Reader) {
+	C.zs_inflate_end(&z.zs[0])
+	freeGzHeaderFields(&z.gzHeader)
 }
 
-// NewReader creates a gzip/flate writer. There can be at most one options arg.
+// NewReader creates a gzip/flate reader. There can be at most one options arg.
 func NewReader(in io.Reader, opts ...Opts) (*Reader, error) {
 	opt, err := getOpts(opts...)
 	if err != nil {
@@ -60,20 +63,18 @@ func NewReader(in io.Reader, opts ...Opts) (*Reader, error) {
 	if ec != 0 {
 		return nil, zlibReturnCodeToError(ec)
 	}
-	if opt.GetGzipHeader {
-		const maxStringLen = 256
-		z.gzHeader.comment = (*C.uchar)(C.malloc(maxStringLen))
-		z.gzHeader.comm_max = maxStringLen
-		z.gzHeader.name = (*C.uchar)(C.malloc(maxStringLen))
-		z.gzHeader.name_max = maxStringLen
-		ec = C.zs_inflate_get_header(&z.zs[0], &z.gzHeader)
-		if ec != 0 {
-			freeGzHeader(z)
-			return nil, zlibReturnCodeToError(ec)
-		}
+	const maxStringLen = 256
+	z.gzHeader.comment = (*C.uchar)(C.malloc(maxStringLen))
+	z.gzHeader.comm_max = maxStringLen
+	z.gzHeader.name = (*C.uchar)(C.malloc(maxStringLen))
+	z.gzHeader.name_max = maxStringLen
+	z.gzHeader.extra = (*C.uchar)(C.malloc(maxStringLen))
+	z.gzHeader.extra_max = maxStringLen
+	ec = C.zs_inflate_get_header(&z.zs[0], &z.gzHeader)
+	if ec == 0 {
 		z.hasGzHeader = true
-		runtime.SetFinalizer(z, freeGzHeader)
 	}
+	runtime.SetFinalizer(z, freeReader)
 	return z, nil
 }
 
@@ -89,7 +90,9 @@ func (z *Reader) Header() (GzipHeader, error) {
 	if z.gzHeader.comment != nil {
 		h.Comment = C.GoString((*C.char)(unsafe.Pointer(z.gzHeader.comment)))
 	}
-	// TODO(saito) get header.
+	if z.gzHeader.extra != nil {
+		h.Extra = C.GoBytes(unsafe.Pointer(z.gzHeader.extra), C.int(z.gzHeader.extra_len))
+	}
 	if z.gzHeader.name != nil {
 		h.Name = C.GoString((*C.char)(unsafe.Pointer(z.gzHeader.name)))
 	}
@@ -98,9 +101,12 @@ func (z *Reader) Header() (GzipHeader, error) {
 	return h, nil
 }
 
-// Close implements io.Closer.
+// Close implements io.Closer. Calling Close is optional, though recommended.
+// NewReader() also installs a GC finalizer that closes the Reader, in case the
+// application forgets to call Close.
 func (z *Reader) Close() error {
-	C.zs_inflate_end(&z.zs[0])
+	runtime.SetFinalizer(z, nil)
+	freeReader(z)
 	if z.err == io.EOF {
 		return nil
 	}

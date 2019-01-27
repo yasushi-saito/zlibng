@@ -3,7 +3,7 @@
 Cgo wrapper for zlib-ng (https://github.com/zlib-ng/zlib-ng).
 It currently supports only {linux,darwin}/amd64.
 
-- The reader implements io.Reader, the writer implements
+- The reader implements io.ReadCloser, the writer implements
   io.WriteCloser.
 
 - Supports both gzip and flate formats.

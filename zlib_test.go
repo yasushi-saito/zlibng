@@ -109,7 +109,7 @@ func TestDeflateHeader(t *testing.T) {
 	out := bytes.Buffer{}
 	zout, err := zlibng.NewWriter(&out)
 	assert.NoError(t, err)
-	wantHeader := zlibng.GzipHeader{Comment: "hello", Time: 12345, OS: 11}
+	wantHeader := zlibng.GzipHeader{Comment: "hello", Name: "blah", Extra: []byte{3, 2, 1}, Time: 12345, OS: 11}
 	assert.NoError(t, zout.SetHeader(wantHeader))
 	data := []byte("testdata")
 	n, err := zout.Write(data)
@@ -117,8 +117,7 @@ func TestDeflateHeader(t *testing.T) {
 	assert.EQ(t, n, len(data))
 	assert.NoError(t, zout.Close())
 	{
-		zin, err := zlibng.NewReader(bytes.NewReader(out.Bytes()),
-			zlibng.Opts{GetGzipHeader: true})
+		zin, err := zlibng.NewReader(bytes.NewReader(out.Bytes()))
 		assert.NoError(t, err)
 		got := bytes.Buffer{}
 		_, err = io.Copy(&got, zin)
@@ -327,7 +326,7 @@ func testDeflateLarge(t *testing.T, gzPath string) {
 func benchmarkInflate(
 	b *testing.B,
 	path string,
-	inflateFactory func(in io.Reader) (io.Reader, error)) {
+	inflateFactory func(in io.Reader) (io.Reader, io.Closer, error)) {
 	b.StopTimer()
 	tmp, err := ioutil.TempDir("", "")
 	assert.NoError(b, err)
@@ -348,39 +347,46 @@ func benchmarkInflate(
 	for i := 0; i < b.N; i++ {
 		in, err = os.Open(dstPath)
 		assert.NoError(b, err)
-		inflator, err := inflateFactory(in)
+		inflator, closer, err := inflateFactory(in)
 		assert.NoError(b, err)
 		n, err := io.Copy(ioutil.Discard, inflator)
 		assert.NoError(b, err)
 		assert.EQ(b, n, wantByte)
+		if closer != nil {
+			assert.NoError(b, closer.Close())
+		}
 	}
 }
 
 func BenchmarkInflateStandardGzip(b *testing.B) {
 	benchmarkInflate(b, *testSmallPathFlag,
-		func(in io.Reader) (io.Reader, error) {
-			return gzip.NewReader(in)
+		func(in io.Reader) (io.Reader, io.Closer, error) {
+			r, err := gzip.NewReader(in)
+			return r, nil, err
 		})
 }
 
 func BenchmarkInflateKlauspostGzip(b *testing.B) {
 	benchmarkInflate(b, *testSmallPathFlag,
-		func(in io.Reader) (io.Reader, error) {
-			return kgzip.NewReader(in)
+		func(in io.Reader) (io.Reader, io.Closer, error) {
+			r, err := kgzip.NewReader(in)
+			return r, nil, err
 		})
 }
 
 func BenchmarkInflateZlibNG(b *testing.B) {
 	benchmarkInflate(b, *testSmallPathFlag,
-		func(in io.Reader) (io.Reader, error) {
-			return zlibng.NewReader(in, zlibng.Opts{Buffer: 512 << 10})
+		func(in io.Reader) (io.Reader, io.Closer, error) {
+			r, err := zlibng.NewReader(in, zlibng.Opts{Buffer: 512 << 10})
+			return r, r, err
 		})
 }
 
 func BenchmarkInflateCGZip(b *testing.B) {
 	benchmarkInflate(b, *testSmallPathFlag,
-		func(in io.Reader) (io.Reader, error) {
-			return cgzip.NewReaderBuffer(in, 512<<10)
+		func(in io.Reader) (io.Reader, io.Closer, error) {
+			r, err := cgzip.NewReaderBuffer(in, 512<<10)
+			return r, r, err
 		})
 }
 

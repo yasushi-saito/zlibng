@@ -73,8 +73,6 @@ type Opts struct {
 	// Strategy specifies the strategy arg for deflateInit. If unset,
 	// Z_DEFAULT_STRATEGY is used.
 	Strategy int
-
-	GetGzipHeader bool
 }
 
 func getOpts(opts ...Opts) (Opts, error) {
