@@ -2,7 +2,7 @@ package zlibng
 
 import (
 	"errors"
-	"fmt"
+	"time"
 )
 
 // Strategy values
@@ -22,14 +22,11 @@ const (
 // DefaultBufferSize is the default value of Opts.Buffer
 const DefaultBufferSize = 512 * 1024
 
-// Format defines the compression format.
-type Format int
-
 const (
-	// Gzip is the format defined in RFC1952
-	Gzip Format = iota
-	// Flate is the format defined in RFC1951
-	Flate
+	// Gzip is the value of Opts.WindowBits to use FLATE format as defined in RFC1952
+	Gzip = 16 + 15
+	// Flate should is the value of Opts.WindowBits to use FLATE format as defined in RFC1951
+	Flate = -15
 )
 
 // GzipHeader alters the contents the gzip header. It is stored in
@@ -39,19 +36,20 @@ const (
 type GzipHeader struct {
 	Comment string
 	Extra   []byte
-	Time    uint64
+	ModTime time.Time
 	Name    string
-
 	// OS field, cf. RFC1952 Section 2.3. Default: 255
-	OS int
+	OS byte
 }
 
 // Opts define the options passed to NewReader and NewWriter.
 type Opts struct {
-	// Format specifies the compression format. Gzip is RFC1952, Flate is RFC 1951.
-	Format Format
-	// Buffer specifies the internal buffer size used during compression and decompression.
-	// The default value is 512KiB.
+	// WindowBits specifies the windowBits arg for deflateInit and inflateInit. It
+	// specifies the compression window size as well as the header format.  If
+	// unset, Gzip is used.
+	WindowBits int
+	// Buffer specifies the internal buffer size used during compression and
+	// decompression.  The default value is 512KiB.
 	Buffer int
 	// Level specifies the compression level, used only by the writer.
 	// The default value of 0 means no compression, which is probably not what you want.
@@ -64,9 +62,6 @@ type Opts struct {
 	// verbatim to deflateInit2. See the zlib doc (http://zlib.net/manual.html)
 	// for more details.
 
-	// WindowBits specifies the windowBits arg for deflateInit2. If WindowBits is
-	// unset, the value of 31 is used if format=Gzip, -15 if format=Flate.
-	WindowBits int
 	// MemLevel specifies the memLevel arg for deflateInit2. If unset, value of 8
 	// is used.
 	MemLevel int
@@ -86,9 +81,6 @@ func getOpts(opts ...Opts) (Opts, error) {
 	}
 	if opt.Buffer <= 0 {
 		opt.Buffer = DefaultBufferSize
-	}
-	if opt.Format != Gzip && opt.Format != Flate {
-		return opt, fmt.Errorf("zlibng: invalid format %v", opt.Format)
 	}
 	return opt, nil
 }

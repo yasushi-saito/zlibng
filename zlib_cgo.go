@@ -17,6 +17,7 @@ package zlibng
 import "C"
 
 import (
+	"time"
 	"errors"
 	"fmt"
 	"io"
@@ -29,8 +30,8 @@ import (
 type zstream [unsafe.Sizeof(C.zng_stream{})]C.char
 
 // Reader is a gzip/zlib/flate reader. It implements io.ReadCloser.  Calling
-// Close is optional, though recommended.  NewReader() also installs a GC
-// finalizer that closes the Reader, in case the application forgets to call
+// Close is optional, though strongly recommended.  NewReader() also installs a
+// GC finalizer that closes the Reader, in case the application forgets to call
 // Close.
 type Reader struct {
 	in          io.Reader
@@ -44,7 +45,7 @@ type Reader struct {
 }
 
 func freeReader(z* Reader) {
-	C.zs_inflate_end(&z.zs[0])
+	_ = C.zs_inflate_end(&z.zs[0])
 	freeGzHeaderFields(&z.gzHeader)
 }
 
@@ -54,12 +55,15 @@ func NewReader(in io.Reader, opts ...Opts) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+  if opt.WindowBits == 0 {
+		opt.WindowBits = 32 + 15;  // autodetect gzip/zlib
+  }
 	z := &Reader{
 		in:         in,
 		inBuf:      make([]byte, opt.Buffer),
 		inConsumed: true, // force in.Read
 	}
-	ec := C.zs_inflate_init(&z.zs[0], C.int(opt.Format))
+	ec := C.zs_inflate_init(&z.zs[0], C.int(opt.WindowBits))
 	if ec != 0 {
 		return nil, zlibReturnCodeToError(ec)
 	}
@@ -84,7 +88,7 @@ func NewReader(in io.Reader, opts ...Opts) (*Reader, error) {
 // REQUIRES: Opts.GetGzipHeader=true when the reader was created.
 func (z *Reader) Header() (GzipHeader, error) {
 	if !z.hasGzHeader {
-		return GzipHeader{}, errors.New("zlibng.reader.header: Opts.GetGzipHeader not set")
+		return GzipHeader{}, errors.New("zlibng.header: Header not supported")
 	}
 	h := GzipHeader{}
 	if z.gzHeader.comment != nil {
@@ -96,19 +100,20 @@ func (z *Reader) Header() (GzipHeader, error) {
 	if z.gzHeader.name != nil {
 		h.Name = C.GoString((*C.char)(unsafe.Pointer(z.gzHeader.name)))
 	}
-	h.Time = uint64(z.gzHeader.time)
-	h.OS = int(z.gzHeader.os)
+	if z.gzHeader.time > 0 {
+		h.ModTime = time.Unix(int64(z.gzHeader.time), 0)
+	}
+	h.OS = byte(z.gzHeader.os)
 	return h, nil
 }
 
-// Close implements io.Closer. Calling Close is optional, though recommended.
-// NewReader() also installs a GC finalizer that closes the Reader, in case the
-// application forgets to call Close.
+// Close implements io.Closer.
 func (z *Reader) Close() error {
 	runtime.SetFinalizer(z, nil)
-	freeReader(z)
+	ec := C.zs_inflate_end(&z.zs[0])
+	freeGzHeaderFields(&z.gzHeader)
 	if z.err == io.EOF {
-		return nil
+		return zlibReturnCodeToError(ec)
 	}
 	return z.err
 }
@@ -184,8 +189,17 @@ func NewWriter(w io.Writer, opts ...Opts) (*Writer, error) {
 		out:    w,
 		outBuf: make([]byte, opt.Buffer),
 	}
-	ec := C.zs_deflate_init(&z.zs[0], C.int(opt.Format), C.int(opt.Level),
-		C.int(opt.WindowBits), C.int(opt.MemLevel), C.int(opt.Strategy))
+  if opt.WindowBits == 0 {
+		opt.WindowBits = Gzip;
+  }
+  if (opt.MemLevel == 0) {
+    opt.MemLevel = 8;
+  }
+  if (opt.Strategy == 0) {
+    opt.Strategy = DefaultStrategy;
+  }
+	ec := C.zs_deflate_init(&z.zs[0], C.int(opt.Level),
+		C.int(opt.WindowBits),  C.int(opt.MemLevel), C.int(opt.Strategy))
 	if ec != 0 {
 		return nil, zlibReturnCodeToError(ec)
 	}
@@ -209,8 +223,8 @@ func (z *Writer) SetHeader(h GzipHeader) error {
 	if len(h.Name) > 0 {
 		z.gzHeader.name = (*C.uchar)(unsafe.Pointer(C.CString(h.Name)))
 	}
-	if h.Time != 0 {
-		z.gzHeader.time = C.ulong(h.Time)
+	if h.ModTime.After(time.Unix(0,0)) {
+		z.gzHeader.time = C.ulong(h.ModTime.Unix())
 	}
 	if h.OS != 0 {
 		z.gzHeader.os = C.int(h.OS)

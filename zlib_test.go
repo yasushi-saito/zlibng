@@ -6,6 +6,7 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -16,12 +17,11 @@ import (
 
 	"github.com/grailbio/testutil/assert"
 	kgzip "github.com/klauspost/compress/gzip"
-	"github.com/vitessio/vitess/go/cgzip"
 	"github.com/yasushi-saito/zlibng"
 )
 
-func testInflate(t *testing.T, r *rand.Rand, format zlibng.Format, src []byte, want []byte) {
-	zin, err := zlibng.NewReader(bytes.NewReader(src), zlibng.Opts{Format: format})
+func testInflate(t *testing.T, r *rand.Rand, windowBits int, src []byte, want []byte) {
+	zin, err := zlibng.NewReader(bytes.NewReader(src), zlibng.Opts{WindowBits: windowBits})
 	assert.NoError(t, err)
 
 	var (
@@ -105,84 +105,58 @@ func TestDeflateFlateSmall(t *testing.T) {
 	testDeflate(t, r, zlibng.Flate, []byte("Blah"))
 }
 
-func TestDeflateHeader(t *testing.T) {
-	out := bytes.Buffer{}
-	zout, err := zlibng.NewWriter(&out)
-	assert.NoError(t, err)
-	wantHeader := zlibng.GzipHeader{Comment: "hello", Name: "blah", Extra: []byte{3, 2, 1}, Time: 12345, OS: 11}
-	assert.NoError(t, zout.SetHeader(wantHeader))
-	data := []byte("testdata")
-	n, err := zout.Write(data)
-	assert.NoError(t, err)
-	assert.EQ(t, n, len(data))
-	assert.NoError(t, zout.Close())
-	{
-		zin, err := zlibng.NewReader(bytes.NewReader(out.Bytes()))
-		assert.NoError(t, err)
-		got := bytes.Buffer{}
-		_, err = io.Copy(&got, zin)
-		assert.NoError(t, err)
-		assert.EQ(t, string(got.Bytes()), string(data))
-		gotHeader, err := zin.Header()
-		assert.NoError(t, err)
-		assert.EQ(t, gotHeader, wantHeader)
-	}
-	{
-		zin, err := gzip.NewReader(bytes.NewReader(out.Bytes()))
-		assert.NoError(t, err)
-		got := bytes.Buffer{}
-		_, err = io.Copy(&got, zin)
-		assert.NoError(t, err)
-		assert.EQ(t, string(got.Bytes()), string(data))
-	}
-}
-
 func TestInflateRandom(t *testing.T) {
-	r := rand.New(rand.NewSource(0))
-	for i := 0; i < 20; i++ {
-		n := r.Intn(16<<20) + 1
-		log.Printf("%d: n=%d", i, n)
-		uncompressed := make([]byte, n)
-		_, err := r.Read(uncompressed)
-		assert.NoError(t, err)
+	for iter := 0; iter < 20; iter++ {
+		i := iter
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
+			r := rand.New(rand.NewSource(int64(i)))
+			n := r.Intn(16<<20) + 1
+			uncompressed := make([]byte, n)
+			_, err := r.Read(uncompressed)
+			assert.NoError(t, err)
 
-		compressed := bytes.Buffer{}
-		gz := gzip.NewWriter(&compressed)
-		_, err = gz.Write(uncompressed)
-		assert.NoError(t, err)
-		assert.NoError(t, gz.Close())
-		testInflate(t, r, zlibng.Gzip, compressed.Bytes(), uncompressed)
+			compressed := bytes.Buffer{}
+			gz := gzip.NewWriter(&compressed)
+			_, err = gz.Write(uncompressed)
+			assert.NoError(t, err)
+			assert.NoError(t, gz.Close())
+			testInflate(t, r, zlibng.Gzip, compressed.Bytes(), uncompressed)
+		})
 	}
 }
 
 // Test packed gzip
 func TestInflateRandomPacked(t *testing.T) {
-	r := rand.New(rand.NewSource(0))
-	for i := 0; i < 20; i++ {
-		compressed := bytes.Buffer{}
-		uncompressed := bytes.Buffer{}
+	for iter := 0; iter < 20; iter++ {
+		i := iter
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
+			r := rand.New(rand.NewSource(int64(i)))
+			compressed := bytes.Buffer{}
+			uncompressed := bytes.Buffer{}
 
-		log.Printf("%d", i)
-		for j := 0; j < 10; j++ {
-			n := r.Intn(2<<20) + 1
-			buf := make([]byte, n)
-			_, err := r.Read(buf)
-			assert.NoError(t, err)
-			uncompressed.Write(buf)
+			for j := 0; j < 10; j++ {
+				n := r.Intn(2<<20) + 1
+				buf := make([]byte, n)
+				_, err := r.Read(buf)
+				assert.NoError(t, err)
+				uncompressed.Write(buf)
 
-			gz := gzip.NewWriter(&compressed)
-			_, err = gz.Write(buf)
-			assert.NoError(t, err)
-			assert.NoError(t, gz.Close())
-		}
-		testInflate(t, r, zlibng.Gzip, compressed.Bytes(), uncompressed.Bytes())
+				gz := gzip.NewWriter(&compressed)
+				_, err = gz.Write(buf)
+				assert.NoError(t, err)
+				assert.NoError(t, gz.Close())
+			}
+			testInflate(t, r, zlibng.Gzip, compressed.Bytes(), uncompressed.Bytes())
+		})
 	}
 }
 
-func testDeflate(t *testing.T, r *rand.Rand, format zlibng.Format, src []byte) {
+func testDeflate(t *testing.T, r *rand.Rand, windowBits int, src []byte) {
 	orgSrc := src
 	out := bytes.Buffer{}
-	zout, err := zlibng.NewWriter(&out, zlibng.Opts{Format: format, Level: -1})
+	zout, err := zlibng.NewWriter(&out, zlibng.Opts{WindowBits: windowBits, Level: -1})
 	assert.NoError(t, err)
 
 	for len(src) > 0 {
@@ -199,7 +173,7 @@ func testDeflate(t *testing.T, r *rand.Rand, format zlibng.Format, src []byte) {
 
 	got := bytes.Buffer{}
 	var zin io.Reader
-	if format == zlibng.Gzip {
+	if windowBits == zlibng.Gzip {
 		zin, err = gzip.NewReader(bytes.NewReader(out.Bytes()))
 		assert.NoError(t, err)
 	} else {
@@ -215,14 +189,17 @@ func testDeflate(t *testing.T, r *rand.Rand, format zlibng.Format, src []byte) {
 }
 
 func TestDeflateRandom(t *testing.T) {
-	r := rand.New(rand.NewSource(0))
-	for i := 0; i < 20; i++ {
-		n := r.Intn(16 << 20)
-		log.Printf("%d: n=%d", i, n)
-		data := make([]byte, n)
-		_, err := r.Read(data)
-		assert.NoError(t, err)
-		testDeflate(t, r, zlibng.Gzip, data)
+	for iter := 0; iter < 20; iter++ {
+		i := iter
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
+			r := rand.New(rand.NewSource(int64(i)))
+			n := r.Intn(16 << 20)
+			data := make([]byte, n)
+			_, err := r.Read(data)
+			assert.NoError(t, err)
+			testDeflate(t, r, zlibng.Gzip, data)
+		})
 	}
 }
 
@@ -382,14 +359,6 @@ func BenchmarkInflateZlibNG(b *testing.B) {
 		})
 }
 
-func BenchmarkInflateCGZip(b *testing.B) {
-	benchmarkInflate(b, *testSmallPathFlag,
-		func(in io.Reader) (io.Reader, io.Closer, error) {
-			r, err := cgzip.NewReaderBuffer(in, 512<<10)
-			return r, r, err
-		})
-}
-
 type discardingWriter struct {
 	n int64
 }
@@ -438,15 +407,6 @@ func BenchmarkDeflateZlibNG(b *testing.B) {
 	benchmarkDeflate(b, *testPathFlag,
 		func(out io.Writer) io.WriteCloser {
 			w, err := zlibng.NewWriter(out, zlibng.Opts{Level: 5, Buffer: 512 << 10})
-			assert.NoError(b, err)
-			return w
-		})
-}
-
-func BenchmarkDeflateCGZip(b *testing.B) {
-	benchmarkDeflate(b, *testPathFlag,
-		func(out io.Writer) io.WriteCloser {
-			w, err := cgzip.NewWriterLevel(out, 5)
 			assert.NoError(b, err)
 			return w
 		})
