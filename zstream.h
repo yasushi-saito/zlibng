@@ -15,7 +15,7 @@ struct zng_gz_header_s;
 extern int zs_deflate_set_header(char* stream, struct zng_gz_header_s* h);
 extern int zs_inflate_get_header(char* stream, struct zng_gz_header_s* h);
 extern int zs_deflate(char* stream, void* in, int in_bytes, void* out,
-                      int* out_bytes);
+                      int* out_bytes, int* consumed_input);
 extern int zs_deflate_end(char* stream, void* out, int* out_bytes);
 
 extern int zs_get_errno();

@@ -52,8 +52,8 @@ int zs_deflate_init(char* stream, int level, int window_bits, int mem_level,
                           strategy);
 }
 
-int zs_deflate(char* stream, void* in, int in_bytes, void* out,
-               int* out_bytes) {
+int zs_deflate(char* stream, void* in, int in_bytes, void* out, int* out_bytes,
+               int* consumed_input) {
   zng_stream* zs = (zng_stream*)stream;
   if (in_bytes > 0) {
     if (zs->avail_in != 0) {  // has buffered input
@@ -68,6 +68,7 @@ int zs_deflate(char* stream, void* in, int in_bytes, void* out,
   zs->avail_out = *out_bytes;
   int ret = zng_deflate(zs, Z_NO_FLUSH);
   *out_bytes = zs->avail_out;
+  *consumed_input = (zs->avail_in == 0);
   return ret;
 }
 

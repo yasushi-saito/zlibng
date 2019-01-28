@@ -17,11 +17,11 @@ package zlibng
 import "C"
 
 import (
-	"time"
 	"errors"
 	"fmt"
 	"io"
 	"runtime"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/unix"
@@ -44,7 +44,7 @@ type Reader struct {
 	err         error
 }
 
-func freeReader(z* Reader) {
+func freeReader(z *Reader) {
 	_ = C.zs_inflate_end(&z.zs[0])
 	freeGzHeaderFields(&z.gzHeader)
 }
@@ -55,9 +55,9 @@ func NewReader(in io.Reader, opts ...Opts) (*Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-  if opt.WindowBits == 0 {
-		opt.WindowBits = 32 + 15;  // autodetect gzip/zlib
-  }
+	if opt.WindowBits == 0 {
+		opt.WindowBits = 32 + 15 // autodetect gzip/zlib
+	}
 	z := &Reader{
 		in:         in,
 		inBuf:      make([]byte, opt.Buffer),
@@ -189,17 +189,17 @@ func NewWriter(w io.Writer, opts ...Opts) (*Writer, error) {
 		out:    w,
 		outBuf: make([]byte, opt.Buffer),
 	}
-  if opt.WindowBits == 0 {
-		opt.WindowBits = Gzip;
-  }
-  if (opt.MemLevel == 0) {
-    opt.MemLevel = 8;
-  }
-  if (opt.Strategy == 0) {
-    opt.Strategy = DefaultStrategy;
-  }
+	if opt.WindowBits == 0 {
+		opt.WindowBits = Gzip
+	}
+	if opt.MemLevel == 0 {
+		opt.MemLevel = 8
+	}
+	if opt.Strategy == 0 {
+		opt.Strategy = DefaultStrategy
+	}
 	ec := C.zs_deflate_init(&z.zs[0], C.int(opt.Level),
-		C.int(opt.WindowBits),  C.int(opt.MemLevel), C.int(opt.Strategy))
+		C.int(opt.WindowBits), C.int(opt.MemLevel), C.int(opt.Strategy))
 	if ec != 0 {
 		return nil, zlibReturnCodeToError(ec)
 	}
@@ -223,7 +223,7 @@ func (z *Writer) SetHeader(h GzipHeader) error {
 	if len(h.Name) > 0 {
 		z.gzHeader.name = (*C.uchar)(unsafe.Pointer(C.CString(h.Name)))
 	}
-	if h.ModTime.After(time.Unix(0,0)) {
+	if h.ModTime.After(time.Unix(0, 0)) {
 		z.gzHeader.time = C.ulong(h.ModTime.Unix())
 	}
 	if h.OS != 0 {
@@ -233,7 +233,8 @@ func (z *Writer) SetHeader(h GzipHeader) error {
 	return zlibReturnCodeToError(ec)
 }
 
-func (z *Writer) push(data []byte) error {
+// Flush writes the data to the output.
+func (z *Writer) flush(data []byte) error {
 	n, err := z.out.Write(data)
 	if err != nil {
 		return err
@@ -266,7 +267,7 @@ func (z *Writer) Close() error {
 			return zlibReturnCodeToError(ret)
 		}
 		nOut := len(z.outBuf) - int(outLen)
-		if err := z.push(z.outBuf[:nOut]); err != nil {
+		if err := z.flush(z.outBuf[:nOut]); err != nil {
 			return err
 		}
 		if ret == C.Z_STREAM_END {
@@ -280,30 +281,33 @@ func (z *Writer) Write(in []byte) (int, error) {
 	if len(in) == 0 {
 		return 0, nil
 	}
-	var outLen = C.int(len(z.outBuf))
+	var (
+		outLen     = C.int(len(z.outBuf))
+		inConsumed C.int
+	)
 	ret := C.zs_deflate(&z.zs[0], unsafe.Pointer(&in[0]), C.int(len(in)),
-		unsafe.Pointer(&z.outBuf[0]), &outLen)
+		unsafe.Pointer(&z.outBuf[0]), &outLen, &inConsumed)
 	if ret != 0 {
 		return 0, zlibReturnCodeToError(ret)
 	}
 	nOut := len(z.outBuf) - int(outLen)
-	if err := z.push(z.outBuf[:nOut]); err != nil {
+	if err := z.flush(z.outBuf[:nOut]); err != nil {
 		return 0, err
 	}
-	if outLen > 0 { // outbuf didn't fillup, i.e., the input was fully consumed.
+	if inConsumed != 0 {
 		return len(in), nil
 	}
 	for {
 		outLen = C.int(len(z.outBuf))
-		ret = C.zs_deflate(&z.zs[0], nil, 0, unsafe.Pointer(&z.outBuf[0]), &outLen)
+		ret = C.zs_deflate(&z.zs[0], nil, 0, unsafe.Pointer(&z.outBuf[0]), &outLen, &inConsumed)
 		if ret != 0 {
 			return 0, zlibReturnCodeToError(ret)
 		}
 		nOut := len(z.outBuf) - int(outLen)
-		if err := z.push(z.outBuf[:nOut]); err != nil {
+		if err := z.flush(z.outBuf[:nOut]); err != nil {
 			return 0, err
 		}
-		if outLen > 0 { // outbuf didn't fillup, i.e., the input was fully consumed.
+		if inConsumed != 0 { // outbuf didn't fillup, i.e., the input was fully consumed.
 			break
 		}
 	}
