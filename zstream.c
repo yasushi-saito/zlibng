@@ -5,10 +5,16 @@
 #include <string.h>
 #include "./zlib-ng.h"
 
-int zs_inflate_init(char* stream, int window_bits) {
+int zs_inflate_init(char* stream, int window_bits, struct zng_gz_header_s* h,
+                    int* get_header_status) {
   zng_stream* zs = (zng_stream*)stream;
   memset(zs, 0, sizeof(*zs));
-  return zng_inflateInit2(zs, window_bits);
+  int ec = zng_inflateInit2(zs, window_bits);
+  if (ec != 0) {
+    return ec;
+  }
+  *get_header_status = zng_inflateGetHeader(zs, h);
+  return 0;
 }
 
 int zs_inflate_end(char* stream) { return zng_inflateEnd((zng_stream*)stream); }
@@ -89,8 +95,4 @@ int zs_deflate_end(char* stream, void* out, int* out_bytes) {
 
 int zs_deflate_set_header(char* stream, zng_gz_header* h) {
   return zng_deflateSetHeader((zng_stream*)stream, h);
-}
-
-int zs_inflate_get_header(char* stream, zng_gz_header* h) {
-  return zng_inflateGetHeader((zng_stream*)stream, h);
 }

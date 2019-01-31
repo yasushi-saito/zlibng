@@ -209,7 +209,7 @@ var (
 	testPathFlag = flag.String("path",
 		"/scratch-nvme/cache_tmp/CNVS-NORM-110033752-cfDNA-WGBS-Rep1_S1_L001_R1_001.fastq", "Plain-text file used for in tests and benchmarks")
 	testGZPathFlag = flag.String("gz-path",
-		"/scratch-nvme/cache_tmp/170206_ARTLoD_B1_01rerun_S1_L001_R1_001.fastq.gz",
+		"/scratch-nvme/cache_tmp/74HPREL332_S1_L001_R1_001.fastq.gz",
 		"Gzipped file used in tests and benchmarks")
 	runManualTestsFlag = flag.Bool("run-manual-tests",
 		false, "Run large tests using files outside the repo")

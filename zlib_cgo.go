@@ -63,19 +63,18 @@ func NewReader(in io.Reader, opts ...Opts) (*Reader, error) {
 		inBuf:      make([]byte, opt.Buffer),
 		inConsumed: true, // force in.Read
 	}
-	ec := C.zs_inflate_init(&z.zs[0], C.int(opt.WindowBits))
-	if ec != 0 {
-		return nil, zlibReturnCodeToError(ec)
-	}
-	const maxStringLen = 256
+	const maxStringLen = 256 // TODO(saito): allow setting the header length.
 	z.gzHeader.comment = (*C.uchar)(C.malloc(maxStringLen))
 	z.gzHeader.comm_max = maxStringLen
 	z.gzHeader.name = (*C.uchar)(C.malloc(maxStringLen))
 	z.gzHeader.name_max = maxStringLen
 	z.gzHeader.extra = (*C.uchar)(C.malloc(maxStringLen))
 	z.gzHeader.extra_max = maxStringLen
-	ec = C.zs_inflate_get_header(&z.zs[0], &z.gzHeader)
-	if ec == 0 {
+	var getHeaderStatus C.int
+	if ec := C.zs_inflate_init(&z.zs[0], C.int(opt.WindowBits), &z.gzHeader, &getHeaderStatus); ec != 0 {
+		return nil, zlibReturnCodeToError(ec)
+	}
+	if getHeaderStatus == 0 {
 		z.hasGzHeader = true
 	}
 	runtime.SetFinalizer(z, freeReader)
