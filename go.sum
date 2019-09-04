@@ -91,8 +91,8 @@ github.com/grailbio/testutil v0.0.0-20190109212408-dbe52faee1b0/go.mod h1:eufccQ
 github.com/grailbio/testutil v0.0.0-20190127023142-d3ae812e9a0e/go.mod h1:2qNoyDzypzYqR8rwIQFnqcL7tZM9iGck0oN9+T1jzbE=
 github.com/grailbio/testutil v0.0.0-20190703174854-d9797572c8d2/go.mod h1:i+zjObs7WShJsMQUmHJUQWPsTZXrBzQuR+1+Jj/JP1Y=
 github.com/grailbio/testutil v0.0.0-20190706081934-3a0f7ba48ec9/go.mod h1:nCCl4+jfrIeIIQwI5A+dDlcqCgLYGHzGwqNRWkWYe3E=
-github.com/grailbio/testutil v0.0.0-20190706081934-619828ac8b7a h1:ptO96mOUNMvdJogkHyFadWjY15eFO9/vt8bmIlqnk5c=
-github.com/grailbio/testutil v0.0.0-20190706081934-619828ac8b7a/go.mod h1:l2XwP1zZwe9MVBdADph0UbEgAi4bdOyyi43qDtrBYuw=
+github.com/grailbio/testutil v0.0.1 h1:EKtdqnM1YwOOVEPbhHoRPCfd7jKnw8N/2viBFX+a6p8=
+github.com/grailbio/testutil v0.0.1/go.mod h1:l2XwP1zZwe9MVBdADph0UbEgAi4bdOyyi43qDtrBYuw=
 github.com/grailbio/v23/factories/grail v0.0.0-20190119012339-40e7f427c0fd/go.mod h1:9cQ/mFcQkU4yvvfM7Zmzy/cGu7gINSfbF8I3dNKOPS4=
 github.com/grailbio/v23/factories/grail v0.0.0-20190703174257-dea14edab192/go.mod h1:M4kMYbDAQCWDJUaLiDUO44JShT4Efc4Tngwm/tCzqjU=
 github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7/go.mod h1:FecbI9+v66THATjSRHfNgh1IVFe/9kFxbXtjV0ctIMA=
@@ -111,6 +111,8 @@ github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+o
 github.com/klauspost/compress v1.4.0/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
 github.com/klauspost/compress v1.7.1 h1:VRD0WLa8rweLB7alA5WMSVkoAtrI8xou5RrNd4JUlR0=
 github.com/klauspost/compress v1.7.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
+github.com/klauspost/compress v1.8.1 h1:oygt2ychZFHOB6M9gUgajzgKrwRgHbGC77NwA4COVgI=
+github.com/klauspost/compress v1.8.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
 github.com/klauspost/cpuid v1.2.0/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
 github.com/klauspost/cpuid v1.2.1 h1:vJi+O/nMdFt0vqm8NZBI6wzALWdA2X+egi0ogNyrC/w=
 github.com/klauspost/cpuid v1.2.1/go.mod h1:Pj4uuM528wm8OyEC2QMXAi2YiTZ96dNQPGgoMS4s3ek=
