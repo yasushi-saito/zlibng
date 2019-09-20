@@ -1,4 +1,4 @@
-/* arch-x86-crc_folding.h
+/* crc_folding.h
  *
  * Compute the CRC32 using a parallelized folding approach with the PCLMULQDQ
  * instruction.

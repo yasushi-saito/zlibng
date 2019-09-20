@@ -23,6 +23,7 @@
 #  include <nmmintrin.h>
 #endif
 #include "deflate.h"
+#include "memcopy.h"
 
 #ifdef ZLIB_DEBUG
 #include <ctype.h>
@@ -92,11 +93,11 @@ static inline long compare258(const unsigned char *const src0, const unsigned ch
         "cmp        $256 + 16, %[ax]\n\t"
         "jb         1b\n\t"
 
-#ifdef X86
+# if !defined(__x86_64__)
         "movzwl     -16(%[src0], %[ax]), %[dx]\n\t"
-#else
+# else
         "movzwq     -16(%[src0], %[ax]), %[dx]\n\t"
-#endif
+# endif
         "xorw       -16(%[src1], %[ax]), %%dx\n\t"
         "jnz        3f\n\t"
 
@@ -151,7 +152,7 @@ static inline void quick_send_bits(deflate_state *const s,
     s->bi_valid = width - (bytes_out * 8);
 
     /* Taking advantage of the fact that LSB comes first, write to output buffer */
-    *(unsigned *)(s->pending_buf + s->pending) = out;
+    memcpy(s->pending_buf + s->pending, &out, sizeof(out));
 
     s->pending += bytes_out;
 }
@@ -164,7 +165,7 @@ static inline void static_emit_ptr(deflate_state *const s, const int lc, const u
     quick_send_bits(s, code1, len1, code2, len2);
 }
 
-extern const ct_data static_ltree[L_CODES+2];
+const ct_data static_ltree[L_CODES+2];
 
 static inline void static_emit_lit(deflate_state *const s, const int lit) {
     quick_send_bits(s, static_ltree[lit].Code, static_ltree[lit].Len, 0, 0);
@@ -177,11 +178,17 @@ static void static_emit_tree(deflate_state *const s, const int flush) {
     last = flush == Z_FINISH ? 1 : 0;
     Tracev((stderr, "\n--- Emit Tree: Last: %u\n", last));
     send_bits(s, (STATIC_TREES << 1)+ last, 3);
+#ifdef ZLIB_DEBUG
+    s->compressed_len += 3;
+#endif
 }
 
 static void static_emit_end_block(deflate_state *const s, int last) {
     send_code(s, END_BLOCK, static_ltree);
-    Tracev((stderr, "\n+++ Emit End Block: Last: %u Pending: %u Total Out: %u\n", last, s->pending, s->strm->total_out));
+#ifdef ZLIB_DEBUG
+    s->compressed_len += 7;  /* 7 bits for EOB */
+#endif
+    Tracev((stderr, "\n+++ Emit End Block: Last: %u Pending: %u Total Out: %zu\n", last, s->pending, s->strm->total_out));
 
     if (last)
         zng_bi_windup(s);
@@ -223,7 +230,9 @@ ZLIB_INTERNAL block_state deflate_quick(deflate_state *s, int flush) {
     do {
         if (s->pending + 4 >= s->pending_buf_size) {
             flush_pending(s->strm);
-            return need_more;
+            if (flush != Z_FINISH) {
+                return need_more;
+            }
         }
 
         if (s->lookahead < MIN_LOOKAHEAD) {

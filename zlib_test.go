@@ -1,5 +1,27 @@
 package zlibng_test
 
+// Pre 2019-09-20
+//
+// BenchmarkInflateCGZip-56            	   10000	    482956 ns/op
+// BenchmarkDeflateCGZip-56            	       1	5514222083 ns/op
+// BenchmarkInflateStandardGzip-56     	   10000	    604818 ns/op
+// BenchmarkInflateKlauspostGzip-56    	   10000	    620658 ns/op
+// BenchmarkInflateZlibNG-56           	   10000	    430711 ns/op
+// BenchmarkDeflateStandardGzip-56     	       1	7770433615 ns/op
+// BenchmarkDeflateKlauspostGzip-56    	       1	3908032173 ns/op
+// BenchmarkDeflateZlibNG-56           	       1	4603557318 ns/op
+
+// 2019-09-20
+//
+// BenchmarkInflateCGZip-56            	   10000	    481241 ns/op
+// BenchmarkDeflateCGZip-56            	       1	5506438605 ns/op
+// BenchmarkInflateStandardGzip-56     	   10000	    604598 ns/op
+// BenchmarkInflateKlauspostGzip-56    	   10000	    552915 ns/op
+// BenchmarkInflateZlibNG-56           	   10000	    406962 ns/op
+// BenchmarkDeflateStandardGzip-56     	       1	7570097805 ns/op
+// BenchmarkDeflateKlauspostGzip-56    	       1	3830474557 ns/op
+// BenchmarkDeflateZlibNG-56           	       1	4725882232 ns/op
+
 import (
 	"bufio"
 	"bytes"
@@ -205,11 +227,11 @@ func TestDeflateRandom(t *testing.T) {
 
 var (
 	testSmallPathFlag = flag.String("small-path",
-		"/scratch-nvme/cache_tmp/get-pip.py", "Plain-text file used for small tests")
+		"/scratch-nvme/cache_tmp/0.intervals.tsv", "Plain-text file used for small tests")
 	testPathFlag = flag.String("path",
-		"/scratch-nvme/cache_tmp/CNVS-NORM-110033752-cfDNA-WGBS-Rep1_S1_L001_R1_001.fastq", "Plain-text file used for in tests and benchmarks")
+		"/scratch-nvme/cache_tmp/cpg_windows1000_chr_only.txt", "Plain-text file used for in tests and benchmarks")
 	testGZPathFlag = flag.String("gz-path",
-		"/scratch-nvme/cache_tmp/74HPREL332_S1_L001_R1_001.fastq.gz",
+		"/scratch-nvme/cache_tmp/cpg_windows1000_chr_only.txt",
 		"Gzipped file used in tests and benchmarks")
 	runManualTestsFlag = flag.Bool("run-manual-tests",
 		false, "Run large tests using files outside the repo")

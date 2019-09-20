@@ -7,7 +7,7 @@
 #include "zbuild.h"
 #include "deflate.h"
 #include "deflate_p.h"
-#include "match.h"
+#include "match_p.h"
 #include "functable.h"
 
 /* ===========================================================================
@@ -58,7 +58,7 @@ ZLIB_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
         if (s->match_length >= MIN_MATCH) {
             check_match(s, s->strstart, s->match_start, s->match_length);
 
-            _zng_tr_tally_dist(s, s->strstart - s->match_start, s->match_length - MIN_MATCH, bflush);
+            zng_zng_tr_tally_dist(s, s->strstart - s->match_start, s->match_length - MIN_MATCH, bflush);
 
             s->lookahead -= s->match_length;
 
@@ -102,7 +102,7 @@ ZLIB_INTERNAL block_state deflate_fast(deflate_state *s, int flush) {
         } else {
             /* No match, output a literal byte */
             Tracevv((stderr, "%c", s->window[s->strstart]));
-            _zng_tr_tally_lit(s, s->window[s->strstart], bflush);
+            zng_zng_tr_tally_lit(s, s->window[s->strstart], bflush);
             s->lookahead--;
             s->strstart++;
         }

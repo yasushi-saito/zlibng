@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.6
+#!/usr/bin/env python3.7
 
 """This script modifies the zlib-ng source directory for cgo.
 
@@ -27,9 +27,16 @@ def patch_file(src_path: str, dst_path: str):
     """Copy a file from src_path to dst_path while rewriting its contents."""
     patterns = [
         ('arch/x86/', 'arch-x86-'),
-        ('crc_folding.h', 'arch-x86-crc_folding.h'),
+        #('crc_folding.h', 'arch-x86-crc_folding.h'),
+        ('../../zbuild.h', 'zbuild.h'),
+        ('../../deflate_p.h', 'deflate_p.h'),
+        ('../../functable.h', 'functable.h'),
+        ('../../deflate.h', 'deflate.h'),
+        ('../../memcopy.h', 'memcopy.h'),
+        ('../../zutil.h', 'zutil.h'),
         ('"./x86.h"', '"./arch-x86-x86.h"'),
         ('"x86.h"', '"./arch-x86-x86.h"'),
+        ('"crc_folding.h"', '"arch-x86-crc_folding.h"'),
         ('crc_fold_', 'zng_crc_fold_'),
         ('x86_check_features', 'zng_x86_check_features'),
         ('fill_window_c', 'zng_fill_window_c'),
@@ -42,6 +49,7 @@ def patch_file(src_path: str, dst_path: str):
         ('_length_code', '_zng_length_code'),
         ('_dist_code', '_zng_dist_code'),
         ('functable;', 'zng_functable;'),
+        ('functable_s', 'zng_functable_s'),
         ('functable.', 'zng_functable.'),
         ('functable = ', 'zng_functable = '),
         ('inflate_fast;', 'zng_inflate_fast'),
@@ -54,7 +62,7 @@ def patch_file(src_path: str, dst_path: str):
         ('inflate_copyright', 'zng_inflate_copyright'),
         ('zcalloc', 'zng_zcalloc'),
         ('zcfree', 'zng_zcfree'),
-        ('const ct_data static_ltree', 'extern const ct_data static_ltree'),
+        #('const ct_data static_ltree', 'extern const ct_data static_ltree'),
         ('zng_functable.h\"', 'functable.h"'),  # undo the include name change
     ]
     logging.info('%s -> %s', src_path, dst_path)
@@ -69,7 +77,9 @@ def main() -> None:
     logging.basicConfig(level=logging.DEBUG)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("src_dir", type=str, help='Directory that stores zlib-ng source files')
+    parser.add_argument("src_dir",
+                        type=str,
+                        help='Directory that stores zlib-ng source files')
     args = parser.parse_args()
 
     shutil.copyfile(args.src_dir + "/LICENSE.md", "LICENSE.md")

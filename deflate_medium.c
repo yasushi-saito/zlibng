@@ -6,11 +6,11 @@
  *
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
-#ifdef MEDIUM_STRATEGY
+#ifndef NO_MEDIUM_STRATEGY
 #include "zbuild.h"
 #include "deflate.h"
 #include "deflate_p.h"
-#include "match.h"
+#include "match_p.h"
 #include "functable.h"
 
 struct match {
@@ -23,11 +23,11 @@ struct match {
 #define MAX_DIST2  ((1 << MAX_WBITS) - MIN_LOOKAHEAD)
 
 static int tr_tally_dist(deflate_state *s, int distance, int length) {
-    return _zng_tr_tally(s, distance, length);
+    return zng_zng_tr_tally(s, distance, length);
 }
 
 static int tr_tally_lit(deflate_state *s, int c) {
-    return  _zng_tr_tally(s, 0, c);
+    return zng_zng_tr_tally(s, 0, c);
 }
 
 static int emit_match(deflate_state *s, struct match match) {
@@ -110,6 +110,8 @@ static void insert_match(deflate_state *s, struct match match) {
             } else {
                 zng_functable.insert_string(s, match.strstart, match.orgstart - match.strstart + 1);
             }
+        } else if (match.orgstart < match.strstart + match.match_length) {
+            zng_functable.insert_string(s, match.orgstart, match.strstart + match.match_length - match.orgstart);
         }
         match.strstart += match.match_length;
         match.match_length = 0;

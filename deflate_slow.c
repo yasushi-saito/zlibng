@@ -7,7 +7,7 @@
 #include "zbuild.h"
 #include "deflate.h"
 #include "deflate_p.h"
-#include "match.h"
+#include "match_p.h"
 #include "functable.h"
 
 /* ===========================================================================
@@ -86,7 +86,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
 
             check_match(s, s->strstart-1, s->prev_match, s->prev_length);
 
-            _zng_tr_tally_dist(s, s->strstart -1 - s->prev_match, s->prev_length - MIN_MATCH, bflush);
+            zng_zng_tr_tally_dist(s, s->strstart -1 - s->prev_match, s->prev_length - MIN_MATCH, bflush);
 
             /* Insert in hash table all strings up to the end of the match.
              * strstart-1 and strstart are already inserted. If there is not
@@ -130,7 +130,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
              * is longer, truncate the previous match to a single literal.
              */
             Tracevv((stderr, "%c", s->window[s->strstart-1]));
-            _zng_tr_tally_lit(s, s->window[s->strstart-1], bflush);
+            zng_zng_tr_tally_lit(s, s->window[s->strstart-1], bflush);
             if (bflush) {
                 FLUSH_BLOCK_ONLY(s, 0);
             }
@@ -150,7 +150,7 @@ ZLIB_INTERNAL block_state deflate_slow(deflate_state *s, int flush) {
     Assert(flush != Z_NO_FLUSH, "no flush?");
     if (s->match_available) {
         Tracevv((stderr, "%c", s->window[s->strstart-1]));
-        _zng_tr_tally_lit(s, s->window[s->strstart-1], bflush);
+        zng_zng_tr_tally_lit(s, s->window[s->strstart-1], bflush);
         s->match_available = 0;
     }
     s->insert = s->strstart < MIN_MATCH-1 ? s->strstart : MIN_MATCH-1;
