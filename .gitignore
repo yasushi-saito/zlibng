@@ -11,3 +11,4 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 .mypy_cache/**
+go.sum
