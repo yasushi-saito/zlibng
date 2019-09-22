@@ -10,7 +10,6 @@ import (
 
 	"github.com/grailbio/testutil/assert"
 	"github.com/klauspost/compress/gzip"
-	"github.com/vitessio/vitess/go/cgzip"
 	"github.com/yasushi-saito/zlibng"
 )
 
@@ -46,21 +45,4 @@ func TestDeflateHeader(t *testing.T) {
 		assert.NoError(t, err)
 		assert.EQ(t, string(got.Bytes()), string(data))
 	}
-}
-
-func BenchmarkInflateCGZip(b *testing.B) {
-	benchmarkInflate(b, *testSmallPathFlag,
-		func(in io.Reader) (io.Reader, io.Closer, error) {
-			r, err := cgzip.NewReaderBuffer(in, 512<<10)
-			return r, r, err
-		})
-}
-
-func BenchmarkDeflateCGZip(b *testing.B) {
-	benchmarkDeflate(b, *testPathFlag,
-		func(out io.Writer) io.WriteCloser {
-			w, err := cgzip.NewWriterLevel(out, 5)
-			assert.NoError(b, err)
-			return w
-		})
 }
